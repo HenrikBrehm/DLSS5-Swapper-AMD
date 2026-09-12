@@ -155,7 +155,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 7 Tests (Schritte je Fall, kein Dateisystem-Eingriff im Spielordner, Manifest-Roundtrip, Restore, i18n grün). Guard grün.
 - retries: 0
 
-### [~] 3.2 Route `spatial` (räumlicher Fallback)
+### [v] 3.2 Route `spatial` (räumlicher Fallback) — commit: e62ba0a
 - depends: 3.1
 - Ziel: `src/core/routes/spatial.js`: berechnet aus der Monitorauflösung sinnvolle Renderauflösungen (Quality 67 %, Balanced 59 %, Performance 50 %) und liefert die Schrittliste: Spiel auf diese Auflösung stellen, dann RSR im Treiber für Vollbild oder Magpie für randloses Fenster. Magpie wird **nicht** mitgeliefert, nur erkannt (`%ProgramFiles%\Magpie`, `%LOCALAPPDATA%\Programs\Magpie`) und verlinkt. Auch hier keine Dateiänderung im Spiel.
 - Dateien: neu `src/core/routes/spatial.js`, `src/core/backend-manager.js`, `src/shared/feature-i18n.js`, neu `test/spatial.test.js`.
