@@ -17,6 +17,10 @@ const BACKUP_DIR = '_DLSS5_Backup';
 // The logs a game writes beside its executable, in the order they matter.
 const GAME_LOGS = [
   'dlss5-feed.log',
+  // What the AMD routes leave behind. First in usefulness for those installs:
+  // it names the upscaler that was actually selected, which is the one thing
+  // a report can never say for itself.
+  'OptiScaler.log',
   'ReShade.log',
   path.join('host64', 'dlss5-feed-host.log'),
   path.join('host64', 'ReShade.log'),
@@ -56,6 +60,39 @@ function sources({ gameDir, exeDir, userData }) {
   return found;
 }
 
+
+// The AMD facts, turned into lines for the environment block.
+//
+// Still no looking: the rows and the engine are passed in by whoever already
+// had them, exactly like every other fact. What this adds is knowing which of
+// them are worth writing down, and that is worth having in one place rather
+// than spelled out at each call site.
+//
+// The Adrenalin version is here because it decides FSR 4 on an RX 7000. A
+// report that omits it cannot be compared with another one.
+function amdFacts(gpuRows, engine) {
+  const facts = {};
+  const rows = Array.isArray(gpuRows) ? gpuRows.filter(Boolean) : [];
+  const amd = rows.find((row) => row.vendor === 'amd') || null;
+  if (rows.length) facts.adapters = rows.map((row) => `${row.name} (${row.driver || 'driver unknown'})`);
+  if (amd) {
+    if (amd.adrenalin) facts.adrenalin = amd.adrenalin;
+    if (amd.rdnaGen) facts.architecture = `RDNA${amd.rdnaGen}${amd.mobile ? ' mobile' : ''}`;
+    facts.fsr4Capable = amd.fsr4Capable ? 'yes' : 'no';
+    // Its absence is a fact too: without this library FSR 4 cannot load at
+    // all, and that turns a puzzling report into an obvious one.
+    facts.fsr4Library = amd.fsr4Dll
+      ? `${amd.fsr4Dll.path} (${amd.fsr4Dll.version || 'version unknown'})`
+      : 'not found in the driver store';
+  }
+  if (engine && engine.engine) {
+    facts.engine = engine.engine + (engine.upscalerSlot ? ' (has an upscaler slot)' : ' (no upscaler slot)');
+    if (engine.projectName) facts.engineProject = engine.projectName;
+    if (engine.configDir) facts.engineConfig = engine.configDir;
+  }
+  return facts;
+}
+
 function section(title, body) {
   const rule = '='.repeat(72);
   return `${rule}\n${title}\n${rule}\n${body}\n`;
@@ -64,12 +101,15 @@ function section(title, body) {
 // `facts` is whatever the caller already knows - version, platform, GPU rows,
 // the activity log. This module never goes looking for machine details of its
 // own, so what ends up in the file stays predictable.
-function report({ gameDir, exeDir, userData, facts = {}, now = new Date() }) {
+function report({ gameDir, exeDir, userData, facts = {}, gpuRows = null, engine = null, now = new Date() }) {
   const found = sources({ gameDir, exeDir, userData });
+  // Facts the caller stated by hand win over the derived ones, so nothing
+  // added here can quietly overwrite something it was told.
+  const all = { ...amdFacts(gpuRows, engine), ...facts };
   const head = [
     `DLSS 5 Swapper diagnostics`,
     `generated: ${now.toISOString()}`,
-    ...Object.entries(facts)
+    ...Object.entries(all)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
   ].join('\n');
@@ -95,4 +135,4 @@ function report({ gameDir, exeDir, userData, facts = {}, now = new Date() }) {
   return { text, sources: found };
 }
 
-module.exports = { report, sources, GAME_LOGS, TAIL_BYTES };
+module.exports = { report, sources, amdFacts, GAME_LOGS, TAIL_BYTES };
