@@ -98,7 +98,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: keine Schlüssel erfinden. Fehlt ein gewünschter Schalter, in STATE.md notieren und weglassen.
 - retries: 0
 
-### [ ] 1.8 Route `amd-optiscaler`
+### [~] 1.8 Route `amd-optiscaler`
 - depends: 1.5, 1.7
 - Ziel: `src/core/routes/amd-optiscaler.js` mit `install(config, log)` analog `optiscaler.install`. Manifest `route: 'amd-optiscaler'`. Copy-Plan aus dem Upstream-Layout: `OptiScaler.dll` unter dem Hook-Namen je API, `fakenvapi.dll` und `.ini` nur bei `inputs === 'fakenvapi'`, Nukem-DLL nur bei `fg === 'nukem'`, FFX- und XeSS-Bibliotheken, Lizenzen nach `OptiScaler/licenses/`. `OptiScaler.ini` über `configureAmd`. Konfliktprüfung über `optiscaler.checkConflicts`. `backend-manager.install()` verzweigt auf die neue Route.
 - Dateien: neu `src/core/routes/amd-optiscaler.js`, `src/core/backend-manager.js`, neu `test/apply-amd-optiscaler.test.js`.

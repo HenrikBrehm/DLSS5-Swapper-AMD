@@ -7,6 +7,7 @@ const journal = require('./file-journal');
 const core = require('./apply');
 const ini = require('./feeder-config');
 const optiscaler = require('./optiscaler');
+const amdOptiscaler = require('./routes/amd-optiscaler');
 const compatibility = require('./compatibility');
 const routes = require('../shared/install-routes');
 
@@ -117,7 +118,7 @@ async function install(config, log = () => {}) {
     return core.applySwap(config, log);
   }
   return journal.transaction(config.gameDir, async () => {
-    if (!old && config.route !== 'optiscaler') {
+    if (!old && !OPTISCALER_ROUTES.includes(config.route)) {
       // Native ReShade may already have an untouched custom preset. Capture
       // its original bytes before the first managed session, while saving
       // subsequent user tuning separately for round-trip backend switches.
@@ -132,9 +133,9 @@ async function install(config, log = () => {}) {
       await saveProfile(config.gameDir, old);
       await core.restoreFiles(config.gameDir, old, log);
     }
-    if (config.route !== 'optiscaler') compatibility.assertLoaderCompatible(config, changed ? null : old);
+    if (!OPTISCALER_ROUTES.includes(config.route)) compatibility.assertLoaderCompatible(config, changed ? null : old);
     const profile = changed || !old ? loadProfile(config) : {};
-    if (config.route !== 'optiscaler' && Object.keys(profile).length) {
+    if (!OPTISCALER_ROUTES.includes(config.route) && Object.keys(profile).length) {
       const manifest = core.beginManifest(config.gameDir, config.exePath, config.api);
       for (const [rel, text] of Object.entries(profile)) {
         await core.writeTracked(manifest, config.gameDir, journal.safePath(config.gameDir, rel), text, { kind: 'config' });
@@ -142,6 +143,9 @@ async function install(config, log = () => {}) {
     }
     let manifest;
     if (config.route === 'optiscaler') manifest = await optiscaler.install({ ...config, profile }, log);
+    // The AMD twin. It needs the previous manifest so a reinstall recognises
+    // its own files instead of reporting them as a conflicting mod.
+    else if (config.route === 'amd-optiscaler') manifest = await amdOptiscaler.install({ ...config, profile, previousManifest: old }, log);
     else manifest = await core.applySwap(config, log);
     for (const companion of config.route === 'native' ? (config.companions || []) : []) {
       const dest = path.join(path.dirname(config.exePath), path.basename(companion));
