@@ -132,7 +132,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: nur `[SystemSettings]` anfassen, keine anderen Abschnitte umschreiben.
 - retries: 0
 
-### [~] 2.2 Route `engine-upscale`
+### [v] 2.2 Route `engine-upscale` — commit: 135b553
 - depends: 2.1, 1.8
 - Ziel: `src/core/routes/engine-upscale.js`: erst `unreal.apply()`, dann dieselbe OptiScaler-Installation wie `amd-optiscaler`, aber mit `inputs: 'none'` als Default, weil die Engine die Eingänge selbst liefert. Ein Manifest, das beides umfasst; Restore macht beides rückgängig. Warnhinweis im Log, dass die Engine-Config global für das Spiel gilt.
 - Dateien: neu `src/core/routes/engine-upscale.js`, `src/core/backend-manager.js`, neu `test/apply-engine-upscale.test.js`.
