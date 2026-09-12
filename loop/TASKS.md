@@ -139,7 +139,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 6 Tests: Install schreibt Engine.ini **und** die OptiScaler-Dateien, Restore entfernt beides byte-identisch, Nicht-Unreal-Ziel wird abgelehnt, Reinstall idempotent, Wechsel von `engine-upscale` zu `amd-optiscaler` räumt die Engine.ini auf. Guard grün.
 - retries: 0
 
-### [~] 2.3 Andere Engines ehrlich melden
+### [v] 2.3 Andere Engines ehrlich melden — commit: 56a990b
 - depends: 1.4
 - Ziel: `src/core/engine-tweaks/index.js` mit `supportFor(engine)` → `{ supported: bool, reason: i18nKey }`. Unreal unterstützt. Unity, RE Engine, Source, id Tech, Godot, CryEngine, unknown: nicht unterstützt, mit je eigener Begründung (z.B. Unity Built-in Render Pipeline liefert keine Bewegungsvektoren). Diese Begründung erscheint im UI statt einer stummen Verweigerung. Keys in allen 38 Sprachen.
 - Dateien: neu `src/core/engine-tweaks/index.js`, `src/shared/feature-i18n.js`, `src/renderer/renderer.js`, neu `test/engine-support.test.js`.
