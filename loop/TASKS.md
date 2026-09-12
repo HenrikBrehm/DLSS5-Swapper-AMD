@@ -230,7 +230,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: beide Sprachen vorhanden; jede Route-ID aus `routeMeta` und jede Stufe kommt vor; Upstream-Link vorhanden. Guard grün.
 - retries: 0
 
-### [~] 5.7 Abschlussbericht
+### [v] 5.7 Abschlussbericht — commit: 3ebca3d
 - depends: 5.6
 - Ziel: `loop/REPORT.md`: was gebaut wurde, Teststand, welche Aufgaben `[v]` sind, welche offen oder blockiert, welche Mensch-Aufgaben anstehen, und die ehrliche Einschätzung, was auf dem Referenz-PC noch verifiziert werden muss, bevor irgendetwas als funktionierend gilt.
 - Dateien: neu `loop/REPORT.md`.
