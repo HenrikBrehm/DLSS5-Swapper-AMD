@@ -8,6 +8,7 @@ const core = require('./apply');
 const ini = require('./feeder-config');
 const optiscaler = require('./optiscaler');
 const amdOptiscaler = require('./routes/amd-optiscaler');
+const engineUpscale = require('./routes/engine-upscale');
 const compatibility = require('./compatibility');
 const routes = require('../shared/install-routes');
 
@@ -131,6 +132,16 @@ async function install(config, log = () => {}) {
     if (changed) {
       log({ code: 'backendSwitching', params: { from: old.route, to: config.route } });
       await saveProfile(config.gameDir, old);
+      // The engine config lives outside the game folder, so restoreFiles
+      // cannot see it. A route that no longer owns that edit must give it up.
+      try {
+        if (engineUpscale.restoreEngineConfig(old, config.gameDir)) {
+          // A new manifest inherits every field of the one on disk, so the
+          // cleared record has to reach the disk too. Otherwise the next
+          // route would start out claiming an engine edit it does not own.
+          await core.saveActiveManifest(config.gameDir, old);
+        }
+      } catch (error) { log({ code: 'restoreProfileWarning', params: { error: error.message } }); }
       await core.restoreFiles(config.gameDir, old, log);
     }
     if (!OPTISCALER_ROUTES.includes(config.route)) compatibility.assertLoaderCompatible(config, changed ? null : old);
@@ -146,6 +157,7 @@ async function install(config, log = () => {}) {
     // The AMD twin. It needs the previous manifest so a reinstall recognises
     // its own files instead of reporting them as a conflicting mod.
     else if (config.route === 'amd-optiscaler') manifest = await amdOptiscaler.install({ ...config, profile, previousManifest: old }, log);
+    else if (config.route === 'engine-upscale') manifest = await engineUpscale.install({ ...config, profile, previousManifest: old }, log);
     else manifest = await core.applySwap(config, log);
     for (const companion of config.route === 'native' ? (config.companions || []) : []) {
       const dest = path.join(path.dirname(config.exePath), path.basename(companion));
@@ -165,6 +177,10 @@ async function restore(gameDir, log = () => {}) {
   if (!old) return recovered;
   // Keep the last tuning even when the user chooses a complete uninstall.
   try { await saveProfile(gameDir, old); }
+  catch (error) { log({ code: 'restoreProfileWarning', params: { error: error.message } }); }
+  // Undone before the manifest that records it is retired, and outside the
+  // journal because the file it names is outside the game folder.
+  try { engineUpscale.restoreEngineConfig(old, gameDir); }
   catch (error) { log({ code: 'restoreProfileWarning', params: { error: error.message } }); }
   await core.restore(gameDir, log);
   return true;
