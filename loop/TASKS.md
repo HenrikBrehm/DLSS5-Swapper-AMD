@@ -202,7 +202,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 4 Tests über den IPC-Handler. Guard grün.
 - retries: 0
 
-### [~] 5.3 Community-Report um Vendor-Felder erweitern
+### [v] 5.3 Community-Report um Vendor-Felder erweitern — commit: 5461ea1
 - depends: 1.2, 5.1
 - Ziel: Payload enthält zusätzlich `vendor`, `tier`, `route`, `upscalerOutput`, `fgType`, `adrenalinVersion` (null wenn unbekannt). Unbekannte Felder vom Server sind kein Fehler.
 - Dateien: `src/community-client.js`, `main.js`, `test/community-client.test.js` erweitern.
