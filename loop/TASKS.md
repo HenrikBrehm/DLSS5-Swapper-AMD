@@ -195,7 +195,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: tabellengetriebener Test mit ≥ 16 Fällen, der jede Zeile der Stufentabelle oben abdeckt; jede `reason` existiert in allen 38 Sprachen. Guard grün.
 - retries: 0
 
-### [~] 5.2 Stufe im UI anzeigen
+### [v] 5.2 Stufe im UI anzeigen — commit: 980efe6
 - depends: 5.1
 - Ziel: Die Spielkarte zeigt die Stufe als Abzeichen, die empfohlene Route ist vorausgewählt, die Begründung steht darunter. Filter nach Stufe in der Bibliothek.
 - Dateien: `src/renderer/renderer.js`, `src/renderer/index.html`, `src/renderer/style.css`, `main.js`, neu `test/router-ipc.test.js`.
