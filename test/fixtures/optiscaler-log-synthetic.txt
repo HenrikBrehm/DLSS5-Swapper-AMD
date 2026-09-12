@@ -1,0 +1,14 @@
+; SYNTHETIC FIXTURE - not a log this application has ever produced.
+; Written from OptiScaler's documented vocabulary to exercise the parser.
+; Task H6 replaces it with a real OptiScaler.log captured from a game run.
+[2026-09-12 22:41:03.118] [info] OptiScaler v0.9.4 loaded as dxgi.dll
+[2026-09-12 22:41:03.119] [info] Process filter matched: Game.exe
+[2026-09-12 22:41:03.204] [info] GPU: AMD Radeon RX 7900 XT (gfx1100)
+[2026-09-12 22:41:03.205] [info] Dxgi spoofing: enabled
+[2026-09-12 22:41:03.517] [info] Dx12Upscaler = fsr31
+[2026-09-12 22:41:03.902] [info] Fsr4Update enabled, upgrading FSR 3.1 to FSR 4.1.1
+[2026-09-12 22:41:03.903] [info] Fsr4ForceEnableInt8 enabled, loading INT8 model
+[2026-09-12 22:41:04.455] [info] amdxcffx64.dll loaded from driver store
+[2026-09-12 22:41:04.881] [info] Upscaler init ok, render 2293x960 -> 3440x1440
+[2026-09-12 22:41:04.882] [info] Frame generation: disabled
+[2026-09-12 22:41:12.640] [info] First frame presented, error code 0

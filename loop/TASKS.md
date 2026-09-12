@@ -106,7 +106,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: `apply.js` höchstens um Exporte bestehender Helfer erweitern.
 - retries: 0
 
-### [ ] 1.9 Verify: OptiScaler-Log auswerten
+### [~] 1.9 Verify: OptiScaler-Log auswerten
 - depends: 1.8
 - Ziel: `src/core/verify.js` mit `parseOptiScalerLog(text)` → `{ upscaler, fsr4, int8, fg, errors }` und `verifyInstall(gameDir, exePath, route)` → `{ state: 'ok'|'no-log'|'failed', details }`. IPC-Handler `verify-install` in `main.js`, Badge im Renderer. Neue i18n-Keys `verifyOk`, `verifyNoLog`, `verifyFailed`, `verifyHint` in allen 38 Sprachen.
 - Dateien: neu `src/core/verify.js`, `main.js`, `src/renderer/renderer.js`, `src/shared/feature-i18n.js`, neu `test/verify.test.js`, neu `test/fixtures/optiscaler-log-synthetic.txt`.

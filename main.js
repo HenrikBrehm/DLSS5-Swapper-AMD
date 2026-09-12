@@ -27,6 +27,7 @@ const installRoutes = require('./src/shared/install-routes');
 const renderingApi = require('./src/shared/rendering-api');
 const { projectUrl } = require('./src/core/project-links');
 const optiscaler = require('./src/core/optiscaler');
+const verify = require('./src/core/verify');
 const { missingPayload } = require('./src/core/payload-guidance');
 const backends = require('./src/core/backend-manager');
 const journal = require('./src/core/file-journal');
@@ -1181,6 +1182,26 @@ ipcMain.handle('acknowledge-driver', (_event, names) => {
   // again and a reinstall of the same one does not.
   if (!seen.includes(names)) { state.driverAcknowledged = [...seen, names].slice(-8); saveState(state); }
   return true;
+});
+
+// Did the install actually do anything? OptiScaler writes a log beside the
+// executable once the game has run, and it names the upscaler that was really
+// selected. This turns "it installed" into "it is running", which is the
+// question every report was actually asking.
+//
+// Advice only, like the driver warning: nothing read here may change what is
+// installed, and a game that has simply not been started yet is reported as
+// "not yet", never as a failure.
+ipcMain.handle('verify-install', (_event, dir) => {
+  try {
+    const manifest = backends.readManifest(dir);
+    if (!manifest || !manifest.game || !manifest.game.exe) return { state: 'no-install', details: {} };
+    return verify.verifyInstall(dir, journal.safePath(dir, manifest.game.exe), manifest.route);
+  } catch (error) {
+    // An unreadable manifest says nothing about the install, so it must not
+    // be reported as a failure of one.
+    return { state: 'no-install', details: { error: error.message } };
+  }
 });
 
 // Which OptiScaler build a game uses, and the ones it may choose between. Only
