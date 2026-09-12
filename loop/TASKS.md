@@ -48,7 +48,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: `primaryDlss` und `hasNativeDlss` nicht verändern.
 - retries: 0
 
-### [~] 1.4 Engine-Erkennung (`src/core/engine-detect.js`)
+### [v] 1.4 Engine-Erkennung (`src/core/engine-detect.js`) — commit: cf90cbc
 - depends: –
 - Ziel: `detectEngine(gameDir, exePath)` → `{ engine, version, projectName, configDir, upscalerSlot }`. Engines: `unreal` (Ordner `Engine/Binaries/Win64`, oder ein Unterordner mit `Content/Paks`, oder Exe endet auf `-Win64-Shipping.exe`; `projectName` = der Ordner mit `Content/Paks`; Version aus `Engine/Build/Build.version` falls vorhanden, sonst aus der Exe-Dateiversion), `unity` (`UnityPlayer.dll` oder `<Name>_Data/globalgamemanagers`), `re-engine` (`re_chunk_000.pak`), `creation` (`*.esm` und Ordner `Data`), `source` (`bin/engine.dll` oder `*.vpk`), `idtech` (`base/*.resources`), `godot` (`*.pck` neben der Exe), `cryengine` (`CrySystem.dll`), sonst `unknown`. `upscalerSlot` ist `true` nur für `unreal`. `configDir` für Unreal: `%LOCALAPPDATA%\<projectName>\Saved\Config\Windows` bzw. `WindowsNoEditor`, über injizierbares `localAppData`.
 - Dateien: neu `src/core/engine-detect.js`, neu `test/engine-detect.test.js`.
