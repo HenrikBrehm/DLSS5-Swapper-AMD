@@ -10,6 +10,7 @@ const optiscaler = require('./optiscaler');
 const amdOptiscaler = require('./routes/amd-optiscaler');
 const engineUpscale = require('./routes/engine-upscale');
 const amdDriver = require('./routes/amd-driver');
+const spatialRoute = require('./routes/spatial');
 const compatibility = require('./compatibility');
 const routes = require('../shared/install-routes');
 
@@ -162,6 +163,7 @@ async function install(config, log = () => {}) {
     // Guided only: it copies nothing into the game, so it never reaches
     // applySwap and never needs a payload.
     else if (config.route === 'amd-driver') manifest = await amdDriver.install(config, log);
+    else if (config.route === 'spatial') manifest = await spatialRoute.install(config, log);
     else manifest = await core.applySwap(config, log);
     for (const companion of config.route === 'native' ? (config.companions || []) : []) {
       const dest = path.join(path.dirname(config.exePath), path.basename(companion));
