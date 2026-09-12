@@ -35,6 +35,8 @@ const optiscaler = require('./src/core/optiscaler');
 const GUIDED_ROUTES = ['amd-driver', 'spatial'];
 const AMD_INJECTING_ROUTES = ['amd-optiscaler', 'engine-upscale'];
 const verify = require('./src/core/verify');
+const router = require('./src/core/router');
+const engineDetect = require('./src/core/engine-detect');
 const optiscalerUpstream = require('./src/core/optiscaler-upstream');
 const { missingPayload } = require('./src/core/payload-guidance');
 const backends = require('./src/core/backend-manager');
@@ -1222,6 +1224,50 @@ ipcMain.handle('acknowledge-driver', (_event, names) => {
   return true;
 });
 
+// The router's answer for one executable, shaped for the sheet.
+//
+// Advice only, and that is load-bearing: a scan must still work when this
+// throws. It reads the game folder and the engine, both of which can fail on
+// a protected or half-installed game, and none of that is a reason to leave
+// somebody without a library.
+function amdAdvice(dir, exe, hasNativeDlss, amdAdapter) {
+  if (!amdAdapter) return {};
+  try {
+    const engine = engineDetect.detectEngine(dir, exe.path);
+    const target = { ...exe, hasNativeDlss, antiCheat: compatibility.hasAntiCheat(dir, exe.path) };
+    return {
+      amdRoutes: installRoutes.routesFor(target, exe.api, amdAdapter),
+      recommendation: router.route(target, amdAdapter, engine),
+      engine: { engine: engine.engine, upscalerSlot: engine.upscalerSlot }
+    };
+  } catch { return {}; }
+}
+
+// One recommendation for one executable, asked for directly. The scan sends
+// the same answer with every candidate; this exists for the sheet to refresh
+// it after the person overrides the rendering API, and it is the surface the
+// tests drive.
+ipcMain.handle('recommend-route', async (_event, dir, exePath) => {
+  try {
+    const amdAdapter = guards.amdRow(await guards.gpuInfo());
+    if (!amdAdapter) return { ok: false, reason: 'noAmdAdapter' };
+    const scan = await scanGame(dir);
+    const candidates = scan.exeCandidates || [];
+    const target = candidates.find((e) => e.path === exePath) || scan.chosen;
+    if (!target) return { ok: false, reason: 'noTarget' };
+    const engine = engineDetect.detectEngine(dir, target.path);
+    const decided = router.route({
+      ...target,
+      hasNativeDlss: installRoutes.nativeDlssPresent(scan),
+      antiCheat: compatibility.hasAntiCheat(dir, target.path)
+    }, amdAdapter, engine);
+    return { ok: true, ...decided, engine: { engine: engine.engine, upscalerSlot: engine.upscalerSlot } };
+  } catch (error) {
+    // Advice that cannot be given is not a failure of the thing it advises on.
+    return { ok: false, reason: 'unavailable', message: error.message };
+  }
+});
+
 // Did the install actually do anything? OptiScaler writes a log beside the
 // executable once the game has run, and it names the upscaler that was really
 // selected. This turns "it installed" into "it is running", which is the
@@ -1539,6 +1585,10 @@ ipcMain.handle('details', async (_event, dir) => {
   }
   const state = loadState();
   const hasNativeDlss = installRoutes.nativeDlssPresent(scan);
+  // One adapter lookup for the whole scan. Advice only, so a machine that
+  // cannot be asked simply gets none.
+  let amdAdapter = null;
+  try { amdAdapter = guards.amdRow(await guards.gpuInfo()); } catch { amdAdapter = null; }
   const files = [...scan.dlssFiles, ...scan.streamlineFiles]
     .map((f) => ({ rel: f.rel, name: f.name, version: f.version }));
   return {
@@ -1558,6 +1608,7 @@ ipcMain.handle('details', async (_event, dir) => {
     previousReShadeRoute: scan.install && scan.install.previousReShadeRoute,
     optiscaler: scan.install && scan.install.optiscaler,
     recommendedRoute: installRoutes.recommendedRoute(scan),
+    amdAdapter: amdAdapter ? { name: amdAdapter.name, adrenalin: amdAdapter.adrenalin, rdnaGen: amdAdapter.rdnaGen, fsr4Capable: amdAdapter.fsr4Capable } : null,
     exes: scan.exeCandidates.map((e) => ({
       rel: e.rel, path: e.path, apiLabel: e.apiLabel, api: e.api,
       bitness: e.bitness, size: e.size, via: e.via,
@@ -1567,7 +1618,8 @@ ipcMain.handle('details', async (_event, dir) => {
       hasNativeDlss,
       apiOverride: apiPreference(state, dir, e.path),
       apiChoices: e.apiChoices || [{ api: e.api, label: e.apiLabel }],
-      routes: installRoutes.routesFor({ ...e, hasNativeDlss })
+      routes: installRoutes.routesFor({ ...e, hasNativeDlss }),
+      ...amdAdvice(dir, e, hasNativeDlss, amdAdapter)
     })),
     files,
     currentDlss: scan.primaryDlss ? {

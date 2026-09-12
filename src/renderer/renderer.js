@@ -696,7 +696,19 @@ function selectedApi(pick, dir) {
 }
 
 function routesFor(pick) {
+  // On a Radeon the main process has already worked these out with the
+  // adapter in hand. The renderer cannot see the adapter, so it takes that
+  // answer rather than asking the shared module for one it cannot give.
+  if (Array.isArray(pick?.amdRoutes) && pick.amdRoutes.length) return pick.amdRoutes;
   return window.installRoutes.routesFor(window.renderingApi.effective(pick, pick?.apiOverride || 'auto'));
+}
+
+// The name of a route, from the registry when it has a translated one and
+// from the original expression otherwise, so the NVIDIA names are unchanged.
+function routeLabel(item) {
+  const meta = window.installRoutes.routeMeta && window.installRoutes.routeMeta(item);
+  if (meta && t(meta.label) !== meta.label) return t(meta.label);
+  return t(item === 'feeder' ? 'routeFeeder' : item === 'renodx' ? 'routeRenodx' : 'routeNative');
 }
 
 function selectedRoute(d, pick, dir) {
@@ -773,11 +785,16 @@ function installOptions(d, pick, dir) {
         <option value="optiscaler"${opti ? ' selected' : ''}${optiReason ? ' disabled' : ''}>OptiScaler DLSS-NR</option>
       </select></label>
       ${!opti ? `<label><span>${t('fRoute')}</span><select id="routeChoice">${routes.filter(item => item !== 'optiscaler').map((item) =>
-        `<option value="${item}"${item === route ? ' selected' : ''}>${t(item === 'feeder' ? 'routeFeeder' : item === 'renodx' ? 'routeRenodx' : 'routeNative')}</option>`).join('')}</select></label>
+        `<option value="${item}"${item === route ? ' selected' : ''}>${esc(routeLabel(item))}</option>`).join('')}</select></label>
       ` : ''}
       ${opti ? `<label><span>${t('fOptiBuild')}</span><select id="optiBuild"></select></label>` : ''}
     </div>
     ${notesBox([
+      // Why this route and not another. Shown first because it is the one
+      // thing the person cannot work out from the list itself.
+      pick.recommendation && pick.recommendation.reason
+        ? `<div class="emu-note tier-note"><span class="tier-badge tier-${pick.recommendation.tier}">${esc(t('tierLabel', pick.recommendation.tier))}</span><span>${esc(t(pick.recommendation.reason))}</span></div>`
+        : null,
       `<div class="emu-note" id="apiHint"><span>${t('apiOverrideHint')}</span>${api.api === 'vulkan' && !opti ? `<span>${t('apiVulkanHint')}</span>` : ''}</div>`,
       `<div class="emu-note backend-note" id="backendHint"><span>${t(opti ? 'optiHint' : 'backendHint')}</span>
         ${optiReason ? `<span>${t(optiReason)}</span>` : ''}
