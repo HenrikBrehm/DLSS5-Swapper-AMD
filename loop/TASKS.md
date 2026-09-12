@@ -40,7 +40,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: `driverNeuralFault` reagiert weiterhin ausschließlich auf NVIDIA-Zeilen.
 - retries: 0
 
-### [ ] 1.3 Scan: Upscaler-Inventar pro Spiel (`target.upscalers`)
+### [v] 1.3 Scan: Upscaler-Inventar pro Spiel (`target.upscalers`) — commit: e296c37
 - depends: –
 - Ziel: `scan.js` ergänzt pro Ziel `upscalers = { dlss, dlssg, fsr2, fsr31, fsr31Signed, xess, streamline, any }`. Dateinamen im Exe-Ordner und bis zwei Ebenen darunter: DLSS `nvngx_dlss.dll`; DLSS-FG `nvngx_dlssg.dll`, `sl.dlss_g.dll`; Streamline `sl.interposer.dll`; FSR2 `ffx_fsr2_api_x64.dll`, `ffx_fsr2_api_dx12_x64.dll`, `ffx_fsr2_api_vk_x64.dll`; FSR3.1 `amd_fidelityfx_dx12.dll`, `amd_fidelityfx_vk.dll`, `amd_fidelityfx_upscaler_dx12.dll`, `ffx_fsr3upscaler_x64.dll`; XeSS `libxess.dll`, `libxess_dx11.dll`. `fsr31Signed` über injizierbaren `isSigned(file)`-Callback, Default PowerShell `Get-AuthenticodeSignature`, nur bei vorhandener FSR3.1-DLL aufgerufen, in Tests immer gestubbt. `any` = mindestens einer von dlss/fsr2/fsr31/xess.
 - Dateien: `src/core/scan.js` ergänzen, neu `test/scan-upscalers.test.js`.
