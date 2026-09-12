@@ -179,7 +179,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: tabellengetriebener Test mit ≥ 14 Fällen. Guard grün.
 - retries: 0
 
-### [~] 4.2 FG-Auswahl in Routen und UI
+### [v] 4.2 FG-Auswahl in Routen und UI — commit: e53aed6
 - depends: 4.1, 1.8, 2.2
 - Ziel: Der Default für `options.fg` in `amd-optiscaler` und `engine-upscale` kommt aus `planFrameGen`. Der Renderer bietet die Auswahl mit vorbelegter Empfehlung und zeigt die Begründung. Keys in allen 38 Sprachen.
 - Dateien: `src/core/routes/amd-optiscaler.js`, `src/core/routes/engine-upscale.js`, `main.js`, `src/renderer/renderer.js`, `src/shared/feature-i18n.js`, Tests erweitern.
