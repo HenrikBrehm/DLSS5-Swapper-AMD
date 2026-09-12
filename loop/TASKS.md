@@ -209,7 +209,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 4 neue Tests, bestehende grün. Guard grün.
 - retries: 0
 
-### [~] 5.4 Diagnose-Bundle um AMD-Daten erweitern
+### [v] 5.4 Diagnose-Bundle um AMD-Daten erweitern — commit: 7c2d78e
 - depends: 1.2, 1.9
 - Ziel: `diagnostics.js` sammelt zusätzlich Adrenalin-Version, Pfad und Version von `amdxcffx64.dll`, die erkannte Engine und `OptiScaler.log` gekürzt auf 200 KB.
 - Dateien: `src/core/diagnostics.js`, `test/diagnostics.test.js` erweitern.
