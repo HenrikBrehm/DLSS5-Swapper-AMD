@@ -64,7 +64,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: `optiReason()` unverändert lassen.
 - retries: 0
 
-### [ ] 1.6 OptiScaler upstream als Komponente (7z, Pinning, Payload-Prüfung)
+### [v] 1.6 OptiScaler upstream als Komponente (7z, Pinning, Payload-Prüfung) — commit: 5b9c971
 - depends: –
 - Ziel: `src/core/optiscaler-upstream.js` mit gepinntem Release 0.9.4 (URL siehe oben, SHA-256 beim ersten Download berechnen und eintragen, GPL-3.0-Text separat laden und prüfen). Entpacken über npm-Paket `7zip-bin` plus `child_process`, kein weiteres neues Paket. Nach dem Entpacken `loop/optiscaler-0.9.4-files.txt` mit Dateiliste und Größen ins Repo schreiben, daraus `validateUpstreamPayload(root)` ableiten. `ensureOptiScalerUpstream(cacheRoot)` analog zu `ensureOptiScaler`. `THIRD_PARTY_NOTICES.md` um OptiScaler upstream, fakenvapi, Nukem und 7zip-bin ergänzen. Das Archiv landet in `tools/` und ist damit gitignored.
 - Dateien: neu `src/core/optiscaler-upstream.js`, `package.json` (nur `7zip-bin`), `package-lock.json`, `THIRD_PARTY_NOTICES.md`, neu `loop/optiscaler-0.9.4-files.txt`, neu `test/optiscaler-upstream.test.js`, neu `test/fixtures/optiscaler-0.9.4.ini` (echte INI aus dem Archiv, unverändert).
