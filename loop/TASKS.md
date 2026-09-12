@@ -124,7 +124,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ## Phase 2 — Stufe 2: Engine-Config (der neue Kern)
 
-### [~] 2.1 Unreal-Config-Schreiber (`src/core/engine-tweaks/unreal.js`)
+### [v] 2.1 Unreal-Config-Schreiber (`src/core/engine-tweaks/unreal.js`) — commit: a3dd371
 - depends: 1.4
 - Ziel: `plan(engine, options)` → Liste `{ file, section, key, value }` und `apply(manifest, gameDir, engine, options, io)`. Zielort: `Engine.ini` im `configDir` aus 1.4, Abschnitt `[SystemSettings]`. Schlüssel: `r.TemporalAA.Upscaler=1`, `r.AntiAliasingMethod` (Default 2 für TAA-Pfad), `r.ScreenPercentage` aus `options.renderScale` (50–100), `r.ScreenPercentage.MinResolution=0`. Read-only-Attribut vor dem Schreiben entfernen und im Manifest merken, damit Restore es zurücksetzt. Original über `trackBeforeWrite` sichern. Existiert die Datei nicht, wird sie angelegt und als `added` verbucht.
 - Dateien: neu `src/core/engine-tweaks/unreal.js`, neu `test/engine-tweaks-unreal.test.js`.
