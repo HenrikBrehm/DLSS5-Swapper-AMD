@@ -56,7 +56,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: nichts schreiben, reine Erkennung.
 - retries: 0
 
-### [~] 1.5 Routen-Registry und vendor-abhängiges `routesFor`
+### [v] 1.5 Routen-Registry und vendor-abhängiges `routesFor` — commit: 75a81da
 - depends: 1.2, 1.3, 1.4
 - Ziel: `src/shared/install-routes.js`: `routesFor(target, api, gpu)`. Ohne `gpu` exakt das heutige Verhalten. Mit `gpu.vendor === 'amd'`: `amd-optiscaler` wenn 64-Bit, kein Emulator, api in `dxgi`/`vulkan`, nicht DX10, und `upscalers.any`; `engine-upscale` wenn 64-Bit, `engine.upscalerSlot`, `!upscalers.any`; `amd-driver` immer wenn api nicht `d3d8`/`ddraw`; `spatial` immer. Niemals `native`/`feeder`/`renodx`/`optiscaler` auf AMD. Neuer Export `routeMeta(route)` → `{ vendor, tier, label, needsGpu }`. `backend-manager.js`: Routen-Whitelist in `profileFile()` und `configPaths()` um `amd-optiscaler` (Config `OptiScaler.ini`), `engine-upscale` (Config `OptiScaler.ini`), `amd-driver` und `spatial` (keine Dateien) ergänzen.
 - Dateien: `src/shared/install-routes.js`, `src/core/backend-manager.js`, `test/install-routes.test.js` erweitern, neu `test/install-routes-amd.test.js`.
