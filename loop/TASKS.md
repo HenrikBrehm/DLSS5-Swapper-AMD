@@ -172,7 +172,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ## Phase 4 — Frame Generation
 
-### [ ] 4.1 FG-Planer (`src/core/fg-plan.js`)
+### [~] 4.1 FG-Planer (`src/core/fg-plan.js`)
 - depends: 1.3
 - Ziel: `planFrameGen({ api, apiLabel, bitness, upscalers, gpu, route })` → `{ fg, note }`. Regeln: natives FSR3-FG vorhanden → `native`; DLSS-FG vorhanden und DX12 oder Vulkan → `nukem`; DX12 ohne FG und Route ist OptiScaler-basiert → `optifg`; sonst → `afmf`. RDNA3 bekommt nie `fsr4-fg`.
 - Dateien: neu `src/core/fg-plan.js`, neu `test/fg-plan.test.js`.
