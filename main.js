@@ -27,6 +27,13 @@ const installRoutes = require('./src/shared/install-routes');
 const renderingApi = require('./src/shared/rendering-api');
 const { projectUrl } = require('./src/core/project-links');
 const optiscaler = require('./src/core/optiscaler');
+// The route classes this file needs, mirrored from src/shared/install-routes
+// rather than imported from it. The install IPC is exercised with a stub of
+// that module, and depending on a newer export than the fixture provides
+// would break a test that has nothing to do with this. A test in
+// install-routes-amd.test.js fails if the two ever drift apart.
+const GUIDED_ROUTES = ['amd-driver', 'spatial'];
+const AMD_INJECTING_ROUTES = ['amd-optiscaler', 'engine-upscale'];
 const verify = require('./src/core/verify');
 const optiscalerUpstream = require('./src/core/optiscaler-upstream');
 const { missingPayload } = require('./src/core/payload-guidance');
@@ -1645,10 +1652,24 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
   if (changed && (old.game.api === 'vulkan' || api === 'vulkan')) return { ok: false, code: 'errBackendVulkanSwitch' };
   let antiCheatAcknowledged = false;
   if (compatibility.hasAntiCheat(dir, target.path)) {
-    const answer = await dialog.showMessageBox(win, antiCheatWarning.dialogOptions(loadState().lang, dir, target.path));
-    if (answer.response !== 1) return { ok: false, cancelled: true };
-    antiCheatAcknowledged = true;
-    send({ code: 'antiCheatRiskAccepted', params: {} });
+    if (GUIDED_ROUTES.includes(route)) {
+      // The guided routes copy nothing into the game. There is nothing for an
+      // anti-cheat system to object to, so there is nothing to warn about
+      // either, and asking would only teach people to click through warnings.
+      antiCheatAcknowledged = true;
+    } else if (AMD_INJECTING_ROUTES.includes(route)) {
+      // An injecting AMD route is never offered for these games, and this is
+      // what makes that promise real rather than cosmetic. Decided from the
+      // route rather than from the card on purpose: the route already says
+      // which side it belongs to, and asking the hardware again would only
+      // add a way for the answer to differ.
+      return { ok: false, code: 'errAntiCheatConsent' };
+    } else {
+      const answer = await dialog.showMessageBox(win, antiCheatWarning.dialogOptions(loadState().lang, dir, target.path));
+      if (answer.response !== 1) return { ok: false, cancelled: true };
+      antiCheatAcknowledged = true;
+      send({ code: 'antiCheatRiskAccepted', params: {} });
+    }
   }
   // The ReShade and Feeder routes both drive the RenoDX neural consumer, which
   // upstream has measured faulting inside NVIDIA's runtime on a known driver

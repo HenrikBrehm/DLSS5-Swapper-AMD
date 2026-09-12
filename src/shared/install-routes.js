@@ -33,6 +33,15 @@
   });
   function routeMeta(route) { return (route && ROUTE_META[route]) || null; }
 
+  // The two guided routes copy nothing into the game and change no file
+  // beside its executable. Everything else puts a proxy DLL there.
+  //
+  // This distinction is what makes an honest answer possible for a game with
+  // anti-cheat: there is nothing for the anti-cheat system to see, so there
+  // is nothing to warn about and nothing to risk.
+  const GUIDED = Object.freeze(['amd-driver', 'spatial']);
+  function routeInjects(route) { return Boolean(route) && !GUIDED.includes(route); }
+
   // OptiScaler is a 64-bit proxy DLL that hooks DXGI or Vulkan. Anything
   // outside that cannot take either of the two injected AMD routes, whatever
   // else the game offers.
@@ -53,6 +62,12 @@
     const routes = [];
     const upscalers = target.upscalers || {};
     const engine = target.engine || null;
+    // A game with anti-cheat gets the guided routes and nothing else. The
+    // NVIDIA routes treat anti-cheat as an acknowledged risk rather than a
+    // block, and that stays as it is; here there is simply no need to take
+    // the risk at all, because the driver reaches these games anyway without
+    // a single file being placed beside the executable.
+    if (target.antiCheat) return ['amd-driver', 'spatial'];
     if (optiScalerReachable(target, api)) {
       if (upscalers.any) routes.push('amd-optiscaler');
       else if (engine && engine.upscalerSlot) routes.push('engine-upscale');
@@ -102,7 +117,7 @@
       ? 'feeder' : nativeDlss ? 'native' : 'feeder';
     return routes.includes(wanted) ? wanted : (routes[0] || null);
   }
-  const api = { routesFor, recommendedRoute, nativeDlssPresent, optiReason, routeMeta, ROUTE_META, amdRoutesFor };
+  const api = { routesFor, recommendedRoute, nativeDlssPresent, optiReason, routeMeta, ROUTE_META, amdRoutesFor, routeInjects, GUIDED };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.installRoutes = api;
 })(typeof window !== 'undefined' ? window : globalThis);

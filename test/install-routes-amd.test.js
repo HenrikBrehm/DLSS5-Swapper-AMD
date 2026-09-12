@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { routesFor, routeMeta, ROUTE_META } = require('../src/shared/install-routes');
+const { routesFor, routeMeta, ROUTE_META, routeInjects } = require('../src/shared/install-routes');
 const backends = require('../src/core/backend-manager');
 
 const AMD = { vendor: 'amd' };
@@ -194,4 +194,71 @@ test('an Intel or unknown vendor is not silently treated as AMD', () => {
     const routes = routesFor(dx12({ upscalers: HAS_DLSS }), 'dxgi', { vendor });
     assert.equal(routes.includes('amd-optiscaler'), false, vendor);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Task 3.3: a game with anti-cheat, on a Radeon.
+// ---------------------------------------------------------------------------
+
+test('anti-cheat on a Radeon leaves only the two routes that inject nothing', () => {
+  // The driver reaches these games anyway, without a single file being put
+  // beside the executable. There is simply no reason to take the risk.
+  const guarded = dx12({ upscalers: HAS_DLSS, engine: UNREAL, antiCheat: true });
+  assert.deepEqual(routesFor(guarded, 'dxgi', AMD), ['amd-driver', 'spatial']);
+  assert.deepEqual(routesFor({ ...guarded, api: 'vulkan', apiLabel: 'Vulkan' }, 'vulkan', AMD), ['amd-driver', 'spatial']);
+  assert.deepEqual(routesFor({ ...guarded, bitness: 32 }, 'dxgi', AMD), ['amd-driver', 'spatial']);
+});
+
+test('the same game without anti-cheat keeps every route it had', () => {
+  const plain = dx12({ upscalers: HAS_DLSS, engine: UNREAL });
+  assert.ok(routesFor(plain, 'dxgi', AMD).includes('amd-optiscaler'));
+  assert.ok(routesFor({ ...plain, antiCheat: false }, 'dxgi', AMD).includes('amd-optiscaler'));
+  assert.equal(routesFor({ ...plain, antiCheat: true }, 'dxgi', AMD).includes('amd-optiscaler'), false);
+});
+
+test('the NVIDIA side is not changed by this: there anti-cheat stays a decision', () => {
+  // Those routes have always treated it as an acknowledged risk rather than a
+  // block, and that is deliberately left alone.
+  const guarded = { bitness: 64, api: 'dxgi', apiLabel: 'DirectX 12', hasNativeDlss: true, antiCheat: true };
+  assert.deepEqual(routesFor(guarded), ['native', 'feeder', 'optiscaler', 'renodx']);
+  assert.deepEqual(routesFor(guarded, 'dxgi', { vendor: 'nvidia' }), ['native', 'feeder', 'optiscaler', 'renodx']);
+});
+
+test('routeInjects draws the line the anti-cheat promise depends on', () => {
+  for (const route of ['amd-optiscaler', 'engine-upscale', 'native', 'feeder', 'optiscaler', 'renodx']) {
+    assert.equal(routeInjects(route), true, route);
+  }
+  for (const route of ['amd-driver', 'spatial']) assert.equal(routeInjects(route), false, route);
+  assert.equal(routeInjects(null), false);
+  assert.equal(routeInjects(undefined), false);
+  // Every route the registry knows is on one side of the line or the other.
+  for (const route of Object.keys(ROUTE_META)) assert.equal(typeof routeInjects(route), 'boolean', route);
+});
+
+test('a route that injects nothing is exactly the set tier 3 offers', () => {
+  const guarded = dx12({ upscalers: HAS_DLSS, antiCheat: true });
+  for (const route of routesFor(guarded, 'dxgi', AMD)) {
+    assert.equal(routeInjects(route), false, `${route} must not be offered for an anti-cheat game`);
+    assert.equal(routeMeta(route).tier, 3, route);
+  }
+});
+
+test('main.js mirrors the route registry, and this fails the moment they drift', () => {
+  // The install IPC is exercised against a stub of the routes module, so
+  // main.js keeps its own copy of these two lists rather than importing a
+  // newer export the fixture does not have. That copy is only safe while
+  // something checks it, which is what this does.
+  const source = fs.readFileSync(path.resolve(__dirname, '..', 'main.js'), 'utf8');
+  const listOf = (name) => {
+    const found = new RegExp(`const ${name} = \\[([^\\]]*)\\]`).exec(source);
+    assert.ok(found, `${name} is not declared in main.js`);
+    return found[1].split(',').map((item) => item.trim().replace(/^'|'$/g, '')).filter(Boolean).sort();
+  };
+  const guided = Object.keys(ROUTE_META).filter((route) => !routeInjects(route)).sort();
+  const amdInjecting = Object.keys(ROUTE_META)
+    .filter((route) => ROUTE_META[route].vendor === 'amd' && routeInjects(route)).sort();
+
+  assert.deepEqual(listOf('GUIDED_ROUTES'), guided);
+  assert.deepEqual(listOf('AMD_INJECTING_ROUTES'), amdInjecting);
+  assert.ok(guided.length > 0 && amdInjecting.length > 0, 'and neither list is empty');
 });

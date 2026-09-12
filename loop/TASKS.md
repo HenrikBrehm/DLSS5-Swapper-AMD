@@ -163,7 +163,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: nichts herunterladen, nichts starten außer auf ausdrückliche Nutzeraktion.
 - retries: 0
 
-### [ ] 3.3 Anti-Cheat auf AMD führt ausschließlich zu Treiber- und Spatial-Routen
+### [~] 3.3 Anti-Cheat auf AMD führt ausschließlich zu Treiber- und Spatial-Routen
 - depends: 3.1, 3.2
 - Ziel: `routesFor` liefert bei `compatibility.hasAntiCheat` auf AMD nur `amd-driver` und `spatial`. Der Anti-Cheat-Bestätigungsdialog entfällt dort, weil nichts injiziert wird.
 - Dateien: `src/shared/install-routes.js`, `main.js`, `test/install-routes-amd.test.js` erweitern.
