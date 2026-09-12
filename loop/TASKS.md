@@ -32,7 +32,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ### [v] 1.1 GPU-Erkennung generisch (`src/core/gpu-detect.js`) — commit: 9e79cf5
 
-### [~] 1.2 `install-guards.js` an gpu-detect anbinden
+### [v] 1.2 `install-guards.js` an gpu-detect anbinden — commit: ac93b35
 - depends: 1.1
 - Ziel: `gpuInfo()` nutzt `gpu-detect.detect()`. Rückgabe bleibt für NVIDIA-Zeilen formgleich (`{name, driver, ...}`), damit `driverNeuralFault`, `driverNames`, `gpuSupported`, `driverSupported` unverändert funktionieren. Neue Exporte: `vendorOf(rows)` → `'amd'|'nvidia'|'intel'|'mixed'|'unknown'` (mixed nur bei mehreren Vendoren mit Anzeigeadapter), `amdRow(rows)` → die erste AMD-Zeile oder null, `amdFsr4Ready(rows)` → bool.
 - Dateien: `src/core/install-guards.js`, neu `test/install-guards-vendor.test.js`, `test/driver-barrier.test.js` nur erweitern.
