@@ -21,6 +21,7 @@
   "author": "Rakan Alkhaldi",
   "license": "MIT",
   "dependencies": {
+    "7zip-bin": "^5.2.0",
     "extract-zip": "^2.0.1"
   },
   "devDependencies": {

@@ -1,0 +1,22 @@
+        400 !! README_EXTRACT ALL FILES TO GAME FOLDER !!.txt
+      26376 amd_fidelityfx_dx12.dll
+   40085776 amd_fidelityfx_framegeneration_dx12.dll
+   28761864 amd_fidelityfx_upscaler_dx12.dll
+    9332432 amd_fidelityfx_vk.dll
+    3351064 D3D12_Optiscaler/D3D12Core.dll
+    3038208 dlssg_to_fsr3_amd_is_better.dll
+     415232 fakenvapi.dll
+        466 fakenvapi.ini
+     411504 libxell.dll
+     156016 libxess_dx11.dll
+   22957432 libxess_fg.dll
+   77795704 libxess.dll
+      13147 Licenses/DirectX_LICENSE.txt
+       1142 Licenses/FidelityFX_v1_LICENSE.md
+      61784 Licenses/FidelityFX_v2_LICENSE.md
+       4194 Licenses/XeSS_LICENSE.txt
+   25379632 OptiScaler.dll
+      47477 OptiScaler.ini
+      12328 setup_linux.sh
+      16947 setup_windows.bat
+--- files: 21 bytes: 211869125

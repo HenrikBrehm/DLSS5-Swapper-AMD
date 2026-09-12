@@ -74,10 +74,28 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ### [ ] 1.7 AMD-Konfigurator `configureAmd()`
 - depends: 1.6
-- Ziel: `configureAmd(iniText, target, gpu, options)` in `optiscaler-upstream.js`. Options `{ output: 'fsr4'|'fsr31'|'xess', inputs: 'dxgi-spoof'|'fakenvapi'|'none', fg: 'none'|'nukem'|'optifg'|'fsr-fg', antiLag2: bool }`. Es dürfen **nur** Schlüssel gesetzt werden, die in `test/fixtures/optiscaler-0.9.4.ini` vorkommen; ein Test erzwingt das. Mindestens: Upscaler je API, FSR4-Schalter, Spoofing, FG-Typ, Logging an, ProcessFilter auf den Exe-Namen. Defaults: output `fsr4` wenn `gpu.fsr4Capable` sonst `fsr31`; inputs `dxgi-spoof` wenn nur DLSS vorhanden ist; fg aus `planFrameGen` sobald 4.1 existiert, vorher `none`.
+- Ziel: `configureAmd(iniText, target, gpu, options)` in `optiscaler-upstream.js`. Options `{ output: 'fsr4'|'fsr31'|'xess', inputs: 'dxgi-spoof'|'fakenvapi'|'none', fg: 'none'|'nukem'|'optifg'|'fsrfg'|'xefg' }`. Es dürfen **nur** Schlüssel gesetzt werden, die in `test/fixtures/optiscaler-0.9.4.ini` vorkommen; ein Test erzwingt das. Schlüssel und Werte stehen unten und sind aus der echten INI abgelesen, nicht geraten.
+- **Die echten Schlüssel und ihre Werte** (aus `test/fixtures/optiscaler-0.9.4.ini`, Kommentare dort sind maßgeblich):
+  - `[Upscalers] Dx12Upscaler`: `xess, fsr21, fsr22, fsr31, dlss`. **FSR 4 läuft über `fsr31`**, dort steht wörtlich „fsr31 (also for FSR4)".
+  - `[Upscalers] Dx11Upscaler`: `fsr22, fsr31, xess, xess_12, fsr21_12, fsr22_12, fsr31_12, dlss`. Für FSR 4: **`fsr31_12`** („dx11on12, FSR4").
+  - `[Upscalers] VulkanUpscaler`: `fsr21, fsr22, fsr31, xess, fsr21_12, fsr31_12, dlss`. Für FSR 4: **`fsr31_12`** („VKon12, FSR4").
+  - `[FSR] Fsr4Update`: `true`/`false`, Standard „depends on GPU - true for RDNA4". Auf **RDNA3 also ausdrücklich `true` setzen**.
+  - `[FSR] Fsr4ForceEnableInt8`: `true`/`false`, Standard `false`, Kommentar „Enables INT8 model for all GPUs". Auf **RDNA3 `true`**, das ist der eigentliche Schalter für die 7000er-Reihe.
+  - `[FSR] FsrAgilitySDKUpgrade`: nur für Windows 10 relevant, auf Windows 11 nicht anfassen.
+  - `[Spoofing] Dxgi`: Standard ist bereits „true for AMD/Intel", also nur bei `inputs === 'none'` ausdrücklich auf `false` setzen.
+  - `[Spoofing] StreamlineSpoofing`: Standard `true`, erlaubt fakenvapi ohne vollständiges Spoofing.
+  - `[FrameGen] Enabled`: `true`/`false`, Standard `false`.
+  - `[FrameGen] FGInput`: `nofg, dlssg, nukems, fsrfg, upscaler, fsrfg30`. Für OptiFG ist der Wert **`upscaler`**, nicht „optifg".
+  - `[FrameGen] FGOutput`: `nofg, fsrfg, xefg, nukems`.
+  - `[Inputs] EnableDlssInputs`, `EnableFsr2Inputs`, `EnableFsr3Inputs`, `EnableXeSSInputs`: Standard `true`.
+  - `[Log] LogToFile`, `LogLevel`, `LogFileName`: für den Verify-Schritt aus 1.9 auf `true` / `2` / fester Name.
+  - `[Plugins] LoadAsiPlugins`: auf `false`, damit fremde ASI-Plugins nicht mitgeladen werden.
+  - `[ProcessFilter] TargetProcessName`: existiert upstream und nimmt den Exe-Namen, damit die Proxy-DLL nicht in Launcher injiziert.
+  - **Nicht vorhanden und daher verboten**: `DlssNr`, `Fsr4Enable`, `UpscalerOutput`, `AntiLag2`. Anti-Lag 2 kommt von fakenvapi, nicht aus dieser INI.
+- Defaults: `output` = `fsr4` wenn `gpu.fsr4Capable`, sonst `fsr31`. `inputs` = `dxgi-spoof` wenn nur DLSS vorhanden ist, sonst `none`. `fg` = `none`, bis 4.1 existiert.
 - Dateien: `src/core/optiscaler-upstream.js`, `test/optiscaler-upstream.test.js` erweitern.
-- Akzeptanz: ≥ 9 Tests (Defaults RDNA2/3/4, jede Option, Schlüssel-Existenz gegen die Fixture, Idempotenz). Guard grün.
-- Grenzen: keine Schlüssel erfinden. Fehlt ein gewünschter Schalter in der INI, in STATE.md notieren und weglassen.
+- Akzeptanz: ≥ 9 Tests (Defaults RDNA2/3/4, jede Option, Schlüssel-Existenz gegen die Fixture, Idempotenz, RDNA3 setzt beide FSR4-Schalter). Guard grün.
+- Grenzen: keine Schlüssel erfinden. Fehlt ein gewünschter Schalter, in STATE.md notieren und weglassen.
 - retries: 0
 
 ### [ ] 1.8 Route `amd-optiscaler`

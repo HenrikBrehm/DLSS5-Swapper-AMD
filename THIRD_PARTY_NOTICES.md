@@ -1,5 +1,45 @@
 # Third-party notices
 
+## OptiScaler, upstream (optional download, AMD routes)
+
+The AMD routes download the official OptiScaler v0.9.4 release archive
+directly from its release page, pinned by URL and SHA-256:
+https://github.com/optiscaler/OptiScaler
+
+No upstream executable, DLL or source is bundled with this application, and
+its setup scripts (`setup_windows.bat`, `setup_linux.sh`) are never executed.
+Upstream binaries remain unmodified; only configuration and tracked
+deployment are performed here.
+
+The archive contains components under their own licences, which are carried
+into `OptiScaler/licenses` in the game folder:
+
+- fakenvapi (`fakenvapi.dll`), GPL-3.0: https://github.com/optiscaler/fakenvapi
+- Nukem9's DLSSG-to-FSR3 (`dlssg_to_fsr3_amd_is_better.dll`):
+  https://github.com/Nukem9/dlssg-to-fsr3
+- AMD FidelityFX modules (`amd_fidelityfx_*.dll`), MIT, with the shipped
+  `FidelityFX_v1_LICENSE.md` and `FidelityFX_v2_LICENSE.md`
+- Intel XeSS / XeLL modules (`libxess*.dll`, `libxell.dll`), with the shipped
+  `XeSS_LICENSE.txt`
+- Microsoft DirectX Agility SDK redistributable
+  (`D3D12_Optiscaler/D3D12Core.dll`), with the shipped `DirectX_LICENSE.txt`
+
+OptiScaler's own GNU GPL version 3 licence is not inside the release archive.
+It is downloaded from the v0.9.4 tag and checksum-verified separately.
+Corresponding upstream source:
+https://github.com/optiscaler/OptiScaler/tree/v0.9.4
+
+AMD's FSR 4 model library (`amdxcffx64.dll`) is part of the installed Radeon
+driver. It is never copied, bundled or redistributed by this application; only
+its presence and version are read from the local DriverStore.
+
+## 7zip-bin
+
+The upstream OptiScaler release is distributed as a 7z archive. Extraction
+uses the `7zip-bin` npm package, which redistributes the official 7-Zip
+command line binaries under the GNU LGPL:
+https://github.com/develar/7zip-bin · https://www.7-zip.org/license.txt
+
 ## OptiScaler DLSS-NR (optional download)
 
 OptiScaler DLSS-NR is an independently licensed project, not part of this
