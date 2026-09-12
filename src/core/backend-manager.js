@@ -9,6 +9,7 @@ const ini = require('./feeder-config');
 const optiscaler = require('./optiscaler');
 const amdOptiscaler = require('./routes/amd-optiscaler');
 const engineUpscale = require('./routes/engine-upscale');
+const amdDriver = require('./routes/amd-driver');
 const compatibility = require('./compatibility');
 const routes = require('../shared/install-routes');
 
@@ -158,6 +159,9 @@ async function install(config, log = () => {}) {
     // its own files instead of reporting them as a conflicting mod.
     else if (config.route === 'amd-optiscaler') manifest = await amdOptiscaler.install({ ...config, profile, previousManifest: old }, log);
     else if (config.route === 'engine-upscale') manifest = await engineUpscale.install({ ...config, profile, previousManifest: old }, log);
+    // Guided only: it copies nothing into the game, so it never reaches
+    // applySwap and never needs a payload.
+    else if (config.route === 'amd-driver') manifest = await amdDriver.install(config, log);
     else manifest = await core.applySwap(config, log);
     for (const companion of config.route === 'native' ? (config.companions || []) : []) {
       const dest = path.join(path.dirname(config.exePath), path.basename(companion));

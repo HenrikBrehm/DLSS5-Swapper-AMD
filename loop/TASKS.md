@@ -148,7 +148,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ## Phase 3 — Stufe 3: Treiber und räumlicher Fallback
 
-### [ ] 3.1 Route `amd-driver` (geführt)
+### [~] 3.1 Route `amd-driver` (geführt)
 - depends: 1.5
 - Ziel: `src/core/routes/amd-driver.js` mit `steps(target, gpu, engine)` → `{ id, i18nKey, applies }` für `fsr4Toggle` (nur `upscalers.fsr31Signed && DX12 && gpu.fsr4Capable`), `afmf` (außer DX8/DirectDraw), `rsr`, `antiLag2`, `optiscalerFallback` (Vulkan mit FSR3.1, weil der Treiber-Override dort nicht greift). `install()` legt **keine** Datei im Spiel an, sondern nur ein Manifest mit `route: 'amd-driver'` und leerer Checkliste; `restore` entfernt nur das Manifest. Adrenalin öffnen über `shell.openPath` auf `%ProgramFiles%\AMD\CNext\CNext\RadeonSoftware.exe`, falls vorhanden.
 - Dateien: neu `src/core/routes/amd-driver.js`, `src/core/backend-manager.js`, `src/shared/feature-i18n.js`, neu `test/amd-driver.test.js`.
