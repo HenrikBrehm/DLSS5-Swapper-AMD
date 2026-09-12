@@ -72,7 +72,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: `optiscaler.js` (NVIDIA-Fork) nicht anfassen.
 - retries: 0
 
-### [ ] 1.7 AMD-Konfigurator `configureAmd()`
+### [~] 1.7 AMD-Konfigurator `configureAmd()`
 - depends: 1.6
 - Ziel: `configureAmd(iniText, target, gpu, options)` in `optiscaler-upstream.js`. Options `{ output: 'fsr4'|'fsr31'|'xess', inputs: 'dxgi-spoof'|'fakenvapi'|'none', fg: 'none'|'nukem'|'optifg'|'fsrfg'|'xefg' }`. Es dürfen **nur** Schlüssel gesetzt werden, die in `test/fixtures/optiscaler-0.9.4.ini` vorkommen; ein Test erzwingt das. Schlüssel und Werte stehen unten und sind aus der echten INI abgelesen, nicht geraten.
 - **Die echten Schlüssel und ihre Werte** (aus `test/fixtures/optiscaler-0.9.4.ini`, Kommentare dort sind maßgeblich):

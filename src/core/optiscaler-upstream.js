@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const pe = require('./pe');
+const ini = require('./feeder-config');
 const { cached, fetchVerified } = require('./runtime-components');
 const { safePath } = require('./file-journal');
 
@@ -124,7 +125,98 @@ function copyPlan(root, api, options = {}) {
   return plan;
 }
 
+// --------------------------------------------------------------------------
+// The AMD configuration.
+//
+// Every key below was read off the shipped OptiScaler.ini, and a test walks
+// this plan against test/fixtures/optiscaler-0.9.4.ini to prove each one
+// exists. That check matters because OptiScaler accepts an unknown key in
+// silence: a misspelled switch does nothing at all and leaves no trace.
+//
+// The values are equally literal. FSR 4 is not its own backend - the shipped
+// comment says "fsr31 (also for FSR4)" - so the way to it is the fsr31
+// backend plus Fsr4Update, and on an RX 7000 also Fsr4ForceEnableInt8,
+// because Fsr4Update on its own defaults to true for RDNA4 only.
+const UPSCALER_BACKENDS = Object.freeze({
+  // output -> [Dx12Upscaler, Dx11Upscaler, VulkanUpscaler]
+  fsr4: Object.freeze(['fsr31', 'fsr31_12', 'fsr31_12']),
+  fsr31: Object.freeze(['fsr31', 'fsr31', 'fsr31']),
+  xess: Object.freeze(['xess', 'xess_12', 'xess'])
+});
+// FGInput/FGOutput pairs. "optifg" is spelled `upscaler` upstream: it drives
+// frame generation from the upscaler's own output rather than from a frame
+// generation input the game provides.
+const FRAME_GEN = Object.freeze({
+  none: Object.freeze(['false', 'nofg', 'nofg']),
+  nukem: Object.freeze(['true', 'nukems', 'nukems']),
+  optifg: Object.freeze(['true', 'upscaler', 'fsrfg']),
+  fsrfg: Object.freeze(['true', 'fsrfg', 'fsrfg']),
+  xefg: Object.freeze(['true', 'upscaler', 'xefg'])
+});
+const INPUT_MODES = Object.freeze(['dxgi-spoof', 'fakenvapi', 'none']);
+const LOG_FILE = 'OptiScaler.log';
+
+function resolveOptions(target, gpu, options = {}) {
+  const upscalers = (target && target.upscalers) || {};
+  // Only DLSS to read means the game has to be told it is talking to an
+  // NVIDIA card; a game that already speaks FidelityFX or XeSS does not.
+  const dlssOnly = Boolean(upscalers.dlss) && !upscalers.fsr2 && !upscalers.fsr31 && !upscalers.xess;
+  const resolved = {
+    output: options.output || (gpu && gpu.fsr4Capable ? 'fsr4' : 'fsr31'),
+    inputs: options.inputs || (dlssOnly ? 'dxgi-spoof' : 'none'),
+    fg: options.fg || 'none'
+  };
+  if (!UPSCALER_BACKENDS[resolved.output]) throw fail('errOptiOption', `unknown output: ${resolved.output}`);
+  if (!INPUT_MODES.includes(resolved.inputs)) throw fail('errOptiOption', `unknown inputs: ${resolved.inputs}`);
+  if (!FRAME_GEN[resolved.fg]) throw fail('errOptiOption', `unknown frame generation: ${resolved.fg}`);
+  return resolved;
+}
+
+// The full set of [section, key, value] entries this configuration writes.
+// Exposed so a test can hold every one of them against the shipped INI.
+function amdPlan(target, gpu, options = {}) {
+  const { output, inputs, fg } = resolveOptions(target, gpu, options);
+  const [dx12, dx11, vulkan] = UPSCALER_BACKENDS[output];
+  const [fgEnabled, fgInput, fgOutput] = FRAME_GEN[fg];
+  const wantsFsr4 = output === 'fsr4';
+  const entry = (section, key, value) => ({ section, key, value: String(value) });
+
+  return [
+    entry('Upscalers', 'Dx12Upscaler', dx12),
+    entry('Upscalers', 'Dx11Upscaler', dx11),
+    entry('Upscalers', 'VulkanUpscaler', vulkan),
+    // Written even when false, so switching away from FSR 4 actually turns it
+    // off again instead of leaving the previous run's setting behind.
+    entry('FSR', 'Fsr4Update', wantsFsr4),
+    entry('FSR', 'Fsr4ForceEnableInt8', wantsFsr4 && gpu && gpu.rdnaGen === 3),
+    entry('Spoofing', 'Dxgi', inputs === 'dxgi-spoof'),
+    entry('Spoofing', 'StreamlineSpoofing', inputs !== 'none'),
+    entry('FrameGen', 'Enabled', fgEnabled),
+    entry('FrameGen', 'FGInput', fgInput),
+    entry('FrameGen', 'FGOutput', fgOutput),
+    entry('Log', 'LogToFile', 'true'),
+    entry('Log', 'LogLevel', '2'),
+    entry('Log', 'LogFileName', LOG_FILE),
+    entry('Plugins', 'LoadAsiPlugins', 'false'),
+    // Without this the proxy also loads inside launchers and crash handlers
+    // that happen to sit in the same folder.
+    entry('ProcessFilter', 'TargetProcessName', path.basename((target && target.exePath) || ''))
+  ];
+}
+
+// FsrAgilitySDKUpgrade is deliberately absent from the plan above. It exists
+// for Windows 10 and demands that the D3D12 redistributable folder sits
+// beside the executable; switching it on from here would be wrong on
+// Windows 11 and a silent trap on Windows 10.
+function configureAmd(text, target, gpu, options = {}) {
+  let out = String(text || '');
+  for (const { section, key, value } of amdPlan(target, gpu, options)) out = ini.setIni(out, section, key, value);
+  return out;
+}
+
 module.exports = {
   RELEASE, CORE, FFX, XESS, FAKENVAPI, NUKEM, BINARIES, TEXT_FILES, LICENSES, SETUP_SCRIPTS,
-  hookFor, validateUpstreamPayload, extract7z, ensureOptiScalerUpstream, copyPlan
+  UPSCALER_BACKENDS, FRAME_GEN, INPUT_MODES, LOG_FILE,
+  hookFor, validateUpstreamPayload, extract7z, ensureOptiScalerUpstream, copyPlan,
+  amdPlan, configureAmd, resolveOptions
 };

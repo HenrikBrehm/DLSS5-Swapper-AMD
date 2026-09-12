@@ -213,3 +213,174 @@ test('FSR 4 on this hardware is reachable through documented values only', () =>
   assert.match(text, /Enables INT8 model for all GPUs/);
   assert.match(text, /Enables updating of FSR3\.X to FSR4/);
 });
+
+// ---------------------------------------------------------------------------
+// Task 1.7: the AMD configurator.
+//
+// Every assertion below is anchored to the INI the real archive ships. A key
+// this configurator writes that does not exist there would be accepted
+// silently by OptiScaler and then do nothing, which is the worst kind of bug
+// to chase from a bug report.
+// ---------------------------------------------------------------------------
+const ini = require('../src/core/feeder-config');
+
+const RDNA3 = { vendor: 'amd', rdnaGen: 3, mobile: false, adrenalin: '26.8.1', fsr4Capable: true };
+const RDNA4 = { vendor: 'amd', rdnaGen: 4, mobile: false, adrenalin: '26.8.1', fsr4Capable: true };
+const RDNA2 = { vendor: 'amd', rdnaGen: 2, mobile: false, adrenalin: '26.8.1', fsr4Capable: false };
+
+const NO_UPSCALER = { dlss: false, dlssg: false, streamline: false, fsr2: false, fsr31: false, fsr31Signed: false, xess: false, any: false };
+const DLSS_ONLY = { ...NO_UPSCALER, dlss: true, any: true };
+const FSR31_GAME = { ...NO_UPSCALER, fsr31: true, any: true };
+
+const targetFor = (extra = {}) => ({
+  exePath: 'C:\\Games\\Some Game\\bin\\x64\\Game.exe',
+  api: 'dxgi', apiLabel: 'DirectX 12', bitness: 64, upscalers: NO_UPSCALER, ...extra
+});
+const base = () => fs.readFileSync(FIXTURE_INI, 'utf8');
+const read = (text, section, key) => ini.getIni(text, section, key);
+
+test('every key the configurator writes exists in the shipped INI', () => {
+  const text = base();
+  const seen = new Set();
+  for (const gpu of [RDNA2, RDNA3, RDNA4]) {
+    for (const output of ['fsr4', 'fsr31', 'xess']) {
+      for (const inputs of ['dxgi-spoof', 'fakenvapi', 'none']) {
+        for (const fg of ['none', 'nukem', 'optifg', 'fsrfg', 'xefg']) {
+          for (const entry of upstream.amdPlan(targetFor(), gpu, { output, inputs, fg })) {
+            seen.add(`${entry.section}.${entry.key}`);
+            const start = text.indexOf(`[${entry.section}]`);
+            assert.notEqual(start, -1, `no section [${entry.section}]`);
+            const next = text.indexOf('\n[', start + 1);
+            const body = text.slice(start, next === -1 ? undefined : next);
+            assert.match(body, new RegExp(`^\\s*${entry.key}\\s*=`, 'm'), `[${entry.section}] ${entry.key} does not exist upstream`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(seen.size >= 12, `only ${seen.size} keys planned`);
+});
+
+test('RDNA3 needs both FSR 4 switches, because one of them is RDNA4-only by default', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, {});
+  assert.equal(read(out, 'Upscalers', 'Dx12Upscaler'), 'fsr31', 'FSR 4 is reached through the fsr31 backend');
+  assert.equal(read(out, 'FSR', 'Fsr4Update'), 'true', 'auto means true only for RDNA4');
+  assert.equal(read(out, 'FSR', 'Fsr4ForceEnableInt8'), 'true', 'the INT8 model is what an RX 7000 runs');
+});
+
+test('RDNA4 gets FSR 4 without being forced onto the INT8 model', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA4, {});
+  assert.equal(read(out, 'FSR', 'Fsr4Update'), 'true');
+  assert.equal(read(out, 'FSR', 'Fsr4ForceEnableInt8'), 'false', 'RDNA4 has FP8 in hardware');
+});
+
+test('a card that cannot run FSR 4 is configured for FSR 3.1 instead', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA2, {});
+  assert.equal(read(out, 'Upscalers', 'Dx12Upscaler'), 'fsr31');
+  assert.equal(read(out, 'FSR', 'Fsr4Update'), 'false');
+  assert.equal(read(out, 'FSR', 'Fsr4ForceEnableInt8'), 'false');
+});
+
+test('each API is pointed at the backend that actually reaches FSR 4 there', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, { output: 'fsr4' });
+  assert.equal(read(out, 'Upscalers', 'Dx12Upscaler'), 'fsr31');
+  assert.equal(read(out, 'Upscalers', 'Dx11Upscaler'), 'fsr31_12', 'DX11 goes through D3D11on12');
+  assert.equal(read(out, 'Upscalers', 'VulkanUpscaler'), 'fsr31_12', 'Vulkan goes through the DX12 interop');
+
+  const plain = upstream.configureAmd(base(), targetFor(), RDNA2, { output: 'fsr31' });
+  assert.equal(read(plain, 'Upscalers', 'Dx11Upscaler'), 'fsr31', 'FSR 3.1 has a native DX11 path');
+  assert.equal(read(plain, 'Upscalers', 'VulkanUpscaler'), 'fsr31');
+
+  const xess = upstream.configureAmd(base(), targetFor(), RDNA3, { output: 'xess' });
+  assert.equal(read(xess, 'Upscalers', 'Dx12Upscaler'), 'xess');
+  assert.equal(read(xess, 'Upscalers', 'Dx11Upscaler'), 'xess_12', 'native DX11 XeSS is Arc only');
+  assert.equal(read(xess, 'FSR', 'Fsr4Update'), 'false', 'a switch away from FSR 4 turns it off again');
+});
+
+test('spoofing is only armed when the game needs to be told it has an NVIDIA card', () => {
+  const spoof = upstream.configureAmd(base(), targetFor(), RDNA3, { inputs: 'dxgi-spoof' });
+  assert.equal(read(spoof, 'Spoofing', 'Dxgi'), 'true');
+
+  const fake = upstream.configureAmd(base(), targetFor(), RDNA3, { inputs: 'fakenvapi' });
+  assert.equal(read(fake, 'Spoofing', 'Dxgi'), 'false', 'fakenvapi avoids spoofing the whole game');
+  assert.equal(read(fake, 'Spoofing', 'StreamlineSpoofing'), 'true');
+
+  const none = upstream.configureAmd(base(), targetFor(), RDNA3, { inputs: 'none' });
+  assert.equal(read(none, 'Spoofing', 'Dxgi'), 'false');
+  assert.equal(read(none, 'Spoofing', 'StreamlineSpoofing'), 'false');
+});
+
+test('a DLSS-only game is spoofed by default, a game with an AMD input is not', () => {
+  const dlss = upstream.configureAmd(base(), targetFor({ upscalers: DLSS_ONLY }), RDNA3, {});
+  assert.equal(read(dlss, 'Spoofing', 'Dxgi'), 'true', 'nothing else would expose the inputs');
+
+  const fsr = upstream.configureAmd(base(), targetFor({ upscalers: FSR31_GAME }), RDNA3, {});
+  assert.equal(read(fsr, 'Spoofing', 'Dxgi'), 'false', 'the game already speaks FidelityFX');
+});
+
+test('frame generation writes an input and an output that belong together', () => {
+  const cases = {
+    none: ['false', 'nofg', 'nofg'],
+    nukem: ['true', 'nukems', 'nukems'],
+    optifg: ['true', 'upscaler', 'fsrfg'],
+    fsrfg: ['true', 'fsrfg', 'fsrfg'],
+    xefg: ['true', 'upscaler', 'xefg']
+  };
+  for (const [fg, [enabled, input, output]] of Object.entries(cases)) {
+    const out = upstream.configureAmd(base(), targetFor(), RDNA3, { fg });
+    assert.equal(read(out, 'FrameGen', 'Enabled'), enabled, fg);
+    assert.equal(read(out, 'FrameGen', 'FGInput'), input, fg);
+    assert.equal(read(out, 'FrameGen', 'FGOutput'), output, fg);
+  }
+});
+
+test('logging is armed so the verify step has something to read', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, {});
+  assert.equal(read(out, 'Log', 'LogToFile'), 'true');
+  assert.equal(read(out, 'Log', 'LogLevel'), '2');
+  assert.equal(read(out, 'Log', 'LogFileName'), 'OptiScaler.log');
+});
+
+test('the proxy is pinned to the game executable and foreign ASI plugins stay out', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, {});
+  assert.equal(read(out, 'ProcessFilter', 'TargetProcessName'), 'Game.exe', 'so launchers are left alone');
+  assert.equal(read(out, 'Plugins', 'LoadAsiPlugins'), 'false');
+});
+
+test('the Windows 10 Agility workaround is never switched on from here', () => {
+  // It requires copying a folder beside the executable, and on Windows 11 it
+  // is simply wrong. Nothing here may enable it silently.
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, {});
+  assert.equal(read(out, 'FSR', 'FsrAgilitySDKUpgrade'), 'auto', 'left exactly as shipped');
+  const planned = upstream.amdPlan(targetFor(), RDNA3, {}).map((e) => `${e.section}.${e.key}`);
+  assert.equal(planned.includes('FSR.FsrAgilitySDKUpgrade'), false);
+});
+
+test('applying the configuration twice changes nothing the second time', () => {
+  for (const options of [{}, { output: 'xess', inputs: 'fakenvapi', fg: 'nukem' }, { fg: 'optifg' }]) {
+    const once = upstream.configureAmd(base(), targetFor(), RDNA3, options);
+    assert.equal(upstream.configureAmd(once, targetFor(), RDNA3, options), once, JSON.stringify(options));
+  }
+});
+
+test('settings the person changed by hand survive', () => {
+  const edited = ini.setIni(ini.setIni(base(), 'Menu', 'Scale', '1.4'), 'Sharpness', 'Sharpness', '0.8');
+  const out = upstream.configureAmd(edited, targetFor(), RDNA3, {});
+  assert.equal(read(out, 'Menu', 'Scale'), '1.4');
+  assert.equal(read(out, 'Sharpness', 'Sharpness'), '0.8');
+});
+
+test('no key that does not exist upstream is ever written', () => {
+  const out = upstream.configureAmd(base(), targetFor(), RDNA3, { fg: 'optifg', inputs: 'fakenvapi' });
+  for (const dead of ['DlssNr', 'Fsr4Enable', 'UpscalerOutput', 'AntiLag2']) {
+    assert.equal(out.includes(`\n${dead}=`), false, dead);
+  }
+  // Anti-Lag 2 is fakenvapi's job, not a setting in this file.
+  assert.equal(out.includes('[DlssNr]'), false);
+});
+
+test('an unknown option is refused rather than quietly ignored', () => {
+  for (const options of [{ output: 'dlss' }, { inputs: 'magic' }, { fg: 'lsfg' }]) {
+    assert.throws(() => upstream.configureAmd(base(), targetFor(), RDNA3, options), { code: 'errOptiOption' }, JSON.stringify(options));
+  }
+});
