@@ -216,7 +216,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 4 neue Tests. Guard grün.
 - retries: 0
 
-### [~] 5.5 Kompatibilitätsliste importieren
+### [v] 5.5 Kompatibilitätsliste importieren — commit: 53e89bb
 - depends: –
 - Ziel: `scripts/import-compat-amd.js` lädt die OptiScaler-Wiki-Seite „FSR4 Compatibility List" als Markdown und erzeugt `src/data/compat-amd.json` mit `{ game, status, notes }`. Der Parser liegt als reine Funktion in `src/core/compat-amd.js`. Netzwerk ausschließlich im Script, nie im Test.
 - Dateien: neu `scripts/import-compat-amd.js`, neu `src/core/compat-amd.js`, neu `src/data/compat-amd.json` (≤ 2 MB), neu `test/compat-amd.test.js`, neu `test/fixtures/compat-amd-sample.md`.
