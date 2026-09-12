@@ -188,7 +188,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ## Phase 5 — Weichensteller und Produktreife
 
-### [~] 5.1 Router (`src/core/router.js`)
+### [v] 5.1 Router (`src/core/router.js`) — commit: a410c45
 - depends: 1.5, 2.3, 3.2, 4.1
 - Ziel: `route(target, gpu, engine)` → `{ tier: 1|2|3, route, fg, reason: i18nKey, alternatives: [] }`. Genau eine Empfehlung plus Alternativen, immer mit Begründung. Das ist die zentrale Funktion des Werkzeugs.
 - Dateien: neu `src/core/router.js`, `src/shared/feature-i18n.js`, neu `test/router.test.js`.
