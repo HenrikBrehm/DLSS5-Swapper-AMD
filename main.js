@@ -28,6 +28,7 @@ const renderingApi = require('./src/shared/rendering-api');
 const { projectUrl } = require('./src/core/project-links');
 const optiscaler = require('./src/core/optiscaler');
 const verify = require('./src/core/verify');
+const optiscalerUpstream = require('./src/core/optiscaler-upstream');
 const { missingPayload } = require('./src/core/payload-guidance');
 const backends = require('./src/core/backend-manager');
 const journal = require('./src/core/file-journal');
@@ -36,6 +37,36 @@ const compatibility = require('./src/core/compatibility');
 const antiCheatWarning = require('./src/shared/anti-cheat-warning');
 const featureI18n = require('./src/shared/feature-i18n');
 const featureText = (key, ...args) => featureI18n.t(loadState().lang, key, ...args);
+
+// What the confirmation says before the AMD route installs anything.
+//
+// Kept as a pure function of the detected adapters so it can be tested
+// without Electron, and deliberately separate from the NVIDIA dialog rather
+// than parameterised into it: that one talks about Blackwell, a driver
+// number and a neural-rendering model, none of which mean anything on a
+// Radeon. Mixing them would make both harder to read and to translate.
+function amdDialogContent(rows, t = featureText) {
+  const guards = require('./src/core/install-guards');
+  const row = guards.amdRow(rows);
+  const adapters = rows && rows.length ? rows.map((g) => `${g.name} — ${g.driver}`).join('\n') : null;
+  return {
+    type: 'question',
+    title: 'OptiScaler',
+    message: t('amdConfirm'),
+    detail: [
+      adapters || t('errOptiHardware'),
+      row && row.adrenalin ? `Adrenalin ${row.adrenalin}` : null,
+      // Only said when there is a Radeon to say it about. With no adapter
+      // detected at all, claiming the card cannot run FSR 4 would be a guess.
+      row ? (guards.amdFsr4Ready(rows) ? t('amdFsr4Ready') : t('amdFsr4Old')) : null,
+      t('amdHint'), t('amdAntiCheatHint'), t('backendHint')
+    ].filter(Boolean),
+    buttons: [t('installOpti'), t('cancel')],
+    defaultId: 1, cancelId: 1
+  };
+}
+// Exported for tests only; the Electron entry point itself has no importer.
+if (typeof module !== 'undefined' && module.exports) module.exports.amdDialogContent = amdDialogContent;
 const vulkanLayer = require('./src/core/vulkan-layer');
 const { HistoryStore, knownFolders, fromManifests } = require('./src/core/history');
 const gameMenu = require('./src/core/game-menu');
@@ -1632,6 +1663,20 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
   }
 
   let optiRoot = null;
+  // The AMD twin of the dialog below. Same shape, different facts: nothing
+  // here mentions Blackwell or a neural-rendering model, because neither
+  // exists on a Radeon.
+  if (route === 'amd-optiscaler') {
+    optiscaler.checkConflicts(dir, target.path, old, api);
+    if (api === 'vulkan' && await vulkanLayer.existing(vulkanLayer.defaultRunner)) return { ok: false, code: 'errOptiVulkanLayer' };
+    const gpu = await guards.gpuInfo();
+    const confirmation = await dialog.showMessageBox(win, amdDialogContent(gpu));
+    if (confirmation.response !== 0) return { ok: false, cancelled: true };
+    const missing = missingVCRuntime(64, path.dirname(target.path), process.env.SystemRoot, ['msvcp140_atomic_wait.dll']);
+    if (missing.length) return { ok: false, code: 'runtimeRequiredHint', message: missing.join(', ') };
+    send({ code: 'optiDownloading', params: {} });
+    optiRoot = await optiscalerUpstream.ensureOptiScalerUpstream(app.getPath('userData'));
+  }
   if (route === 'optiscaler') {
     optiscaler.checkConflicts(dir, target.path, old, api);
     if (api === 'vulkan' && await vulkanLayer.existing(vulkanLayer.defaultRunner)) return { ok: false, code: 'errOptiVulkanLayer' };

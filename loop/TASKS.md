@@ -114,7 +114,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Grenzen: Die Log-Muster sind eine Hypothese, bis der Mensch ein echtes Log liefert (H6). Im Code als solche kommentieren.
 - retries: 0
 
-### [ ] 1.10 UI und i18n für die AMD-Routen
+### [~] 1.10 UI und i18n für die AMD-Routen
 - depends: 1.8
 - Ziel: Routenauswahl zeigt auf AMD `FSR 4 via OptiScaler`, `Engine-Upscaling`, `AMD-Treiber (geführt)`, `Räumlich (Fallback)`. Der Bestätigungsdialog in `main.js` ist vendor-abhängig: auf AMD Adrenalin-Version, FSR-4-Fähigkeit und Anti-Cheat-Hinweis, keine Blackwell- oder 616.56-Texte. Neue Keys in allen 38 Sprachen.
 - Dateien: `main.js`, `src/renderer/renderer.js`, `src/renderer/index.html`, `src/shared/feature-i18n.js`, `test/feature-i18n.test.js` erweitern, neu `test/amd-dialog.test.js`.
