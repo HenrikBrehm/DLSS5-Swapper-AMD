@@ -870,6 +870,15 @@ ipcMain.handle('community-prefill', async (_event, dir) => {
     const gpus = await guards.gpuInfo().catch(() => null);
     const gpu = Array.isArray(gpus) && gpus[0] ? gpus[0] : {};
     const route = scan.install?.route === 'native' ? 'renodx' : (scan.install?.route || null);
+    // Found inline rather than through install-guards: on a mixed machine the
+    // first adapter may be the NVIDIA one, and the Radeon is what these
+    // fields are about.
+    const amdAdapter = (Array.isArray(gpus) ? gpus : []).find((row) => row && row.vendor === 'amd') || null;
+    // The install's own record says what was configured. The scan payload
+    // carries only part of it, so it is read here directly.
+    let reportManifest = null;
+    try { reportManifest = backends.readManifest(dir); } catch { reportManifest = null; }
+    const installed = reportManifest && reportManifest.optiscaler ? reportManifest.optiscaler : null;
     const store = ({ Steam: 'steam', 'Epic Games': 'epic', GOG: 'gog', Xbox: 'xbox', Ubisoft: 'ubisoft' })[game.launcher] || null;
     return { prefill: {
       title: game.name, poster: game.poster?.url || game.poster || null,
@@ -884,9 +893,22 @@ ipcMain.handle('community-prefill', async (_event, dir) => {
       kicker: kickerFor(dir, game),
       game: { store, storeId: store && game.id ? String(game.id) : null, title: game.name,
         exe: scan.chosen?.rel ? path.basename(scan.chosen.rel) : null },
-      route: ['feeder', 'renodx', 'optiscaler'].includes(route) ? route : null,
+      // Every route the registry knows, not just the three ReShade-era names.
+      // A report from a Radeon that says "route: null" is close to useless,
+      // and that is exactly the report this project needs most.
+      route: installRoutes.routeMeta(route) ? route : null,
+      tier: (installRoutes.routeMeta(route) || {}).tier || null,
       api: communityApi(target),
       gpu: gpu.name || null, driver: gpu.driver || null,
+      // Which vendor, and on a Radeon the Adrenalin version. That version is
+      // what decides FSR 4 on an RX 7000, so a report without it cannot be
+      // compared with another.
+      vendor: gpu.vendor || (amdAdapter ? 'amd' : null),
+      adrenalinVersion: amdAdapter ? amdAdapter.adrenalin || null : null,
+      // What was actually configured, read from the install's own record
+      // rather than guessed from the route name.
+      upscalerOutput: installed ? installed.output || null : null,
+      fgType: (reportManifest && reportManifest.frameGen && reportManifest.frameGen.fg) || (installed && installed.fg) || null,
       cpu: os.cpus()?.[0]?.model || null,
       os: `${process.platform} ${os.release()}`, app: app.getVersion()
     } };

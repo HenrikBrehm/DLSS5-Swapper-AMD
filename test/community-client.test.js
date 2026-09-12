@@ -204,3 +204,57 @@ test('administrator chat messages use the protected routes', async t => {
   ]);
   assert.ok(calls.every(call => call.options.headers.authorization === `Bearer ${token}`));
 });
+
+// ---------------------------------------------------------------------------
+// Task 5.3: a report from a Radeon has to carry the facts that make it
+// comparable to another one. Without the Adrenalin version, two reports about
+// the same game on the same card can disagree for a reason nobody can see.
+// ---------------------------------------------------------------------------
+
+test('a report is sent exactly as given, so new fields need no client change', async (t) => {
+  const { client, calls } = fixture(t, [{ status: 200, body: { id: 'r1' } }]);
+  const payload = {
+    game: { store: 'steam', storeId: '1', title: 'A Game', exe: 'Game.exe' },
+    route: 'amd-optiscaler', tier: 1, result: 'works',
+    vendor: 'amd', adrenalinVersion: '26.8.1',
+    upscalerOutput: 'fsr4', fgType: 'optifg',
+    gpu: 'AMD Radeon RX 7900 XT', driver: '32.0.31041.1004'
+  };
+  await client.report(payload);
+  const sent = JSON.parse(calls.at(-1).options.body);
+  assert.deepEqual(sent, payload, 'nothing is dropped and nothing is added');
+});
+
+test('the new fields survive as null when they are not known', async (t) => {
+  // An NVIDIA machine, or a game that was never installed, has no Adrenalin
+  // version and no configured output. Null is the honest value, and it has to
+  // reach the server rather than being stripped on the way.
+  const { client, calls } = fixture(t, [{ status: 200, body: { id: 'r2' } }]);
+  await client.report({ route: null, tier: null, vendor: 'nvidia', adrenalinVersion: null, upscalerOutput: null, fgType: null });
+  const sent = JSON.parse(calls.at(-1).options.body);
+  for (const key of ['route', 'tier', 'adrenalinVersion', 'upscalerOutput', 'fgType']) {
+    assert.ok(key in sent, `${key} was dropped`);
+    assert.equal(sent[key], null, key);
+  }
+  assert.equal(sent.vendor, 'nvidia');
+});
+
+test('a server that answers with fields the client has never heard of is not an error', async (t) => {
+  // The server and this application are released separately. A newer server
+  // adding a field must not break an older client.
+  const { client } = fixture(t, [{ status: 200, body: { id: 'r3', tier: 2, somethingNew: { nested: true }, score: 7 } }]);
+  const data = await client.report({ route: 'engine-upscale' });
+  assert.equal(data.id, 'r3');
+  assert.equal(data.tier, 2);
+  assert.deepEqual(data.somethingNew, { nested: true });
+});
+
+test('a report write still identifies the install, and a read still does not', async (t) => {
+  // The new fields must not change what the report carries about the person.
+  const { client, calls } = fixture(t, [{ status: 200, body: {} }, { status: 200, body: { data: [] } }]);
+  await client.report({ route: 'amd-driver', vendor: 'amd', adrenalinVersion: '26.8.1' });
+  assert.ok(calls.at(-1).options.headers['x-install'], 'a write is attributed to this install');
+
+  await client.cards({ page: 1 });
+  assert.equal(calls.at(-1).options.headers['x-install'], undefined, 'a read is not');
+});
