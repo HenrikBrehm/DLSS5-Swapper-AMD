@@ -32,6 +32,87 @@ const MAX_SCAN_DEPTH = 12;
 const NOT_A_GAME = /^(unins|setup|install|vcredist|vc_redist|dxsetup|dxwebsetup|oalinst|uninstall|crashreport|crashhandler|easyanticheat|eac|battleye|be_service|launcher|activation|patch|update|dotnetfx|touchup|rapidcrc|autorun|autoplay|quicksfv|readme|config|benchmark|report|helper|service|cleanup|modorganizer|redlauncher|skse\d*_loader|hlds\b|srcds\b|steamerrorreporter|dgvoodoocpl|reshade_setup)/i;
 
 const DLSS_FILE = /^(nvngx_dlss[a-z_]*\.dll|nvngx\.dll|_nvngx\.dll)$/i;
+
+// What upscaling a game already ships, by the runtime files it carries. This
+// decides which tier the game can reach: anything here that OptiScaler can
+// read as an input means FSR 4 is one install away, and a game with none of
+// it has to go through its engine or settle for spatial upscaling.
+//
+// `dlssg` and `streamline` are listed but deliberately left out of `any`:
+// they are frame-generation and plumbing, not an upscaler input.
+const UPSCALER_PATTERNS = Object.freeze({
+  dlss: [/^nvngx_dlss\.dll$/i],
+  dlssg: [/^nvngx_dlssg\.dll$/i, /^sl\.dlss_g\.dll$/i],
+  streamline: [/^sl\.interposer\.dll$/i],
+  fsr2: [/^ffx_fsr2_api(?:_dx12|_vk)?_x64\.dll$/i],
+  fsr31: [/^amd_fidelityfx_(?:dx12|vk)\.dll$/i, /^amd_fidelityfx_upscaler_dx12\.dll$/i, /^ffx_fsr3upscaler_x64\.dll$/i],
+  xess: [/^libxess(?:_dx11)?\.dll$/i]
+});
+const UPSCALER_INPUTS = Object.freeze(['dlss', 'fsr2', 'fsr31', 'xess']);
+// Two directory levels below the executable. Deep enough for the bin\x64 and
+// Engine\Binaries\Win64 layouts games actually use, shallow enough that a
+// bundled tool or an unrelated mod further down is not read as the game's own.
+const UPSCALER_DEPTH = 2;
+
+function emptyUpscalers() {
+  return { dlss: false, dlssg: false, streamline: false, fsr2: false, fsr31: false, fsr31Signed: false, xess: false, any: false };
+}
+
+// Only a signed FSR 3.1 runtime can be swapped for FSR 4 by the Radeon driver
+// itself; AMD refuses unsigned or third-party integrations. A game that fails
+// this still reaches FSR 4, just through OptiScaler instead of the toggle.
+async function authenticodeSigned(file) {
+  const shell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
+  const literal = file.replace(/'/g, "''");
+  const output = await new Promise((resolve, reject) => {
+    require('child_process').execFile(shell, ['-NoProfile', '-NonInteractive', '-Command',
+      `(Get-AuthenticodeSignature -LiteralPath '${literal}').Status`],
+    { windowsHide: true, timeout: 20000, maxBuffer: 1024 * 1024 },
+    (error, stdout) => error ? reject(error) : resolve(stdout));
+  });
+  return output.trim() === 'Valid';
+}
+
+// The inventory for one executable's folder. Files this application installed
+// are excluded: the AMD route copies amd_fidelityfx_*.dll into the game, and
+// without this a second scan would report those as the game's own and offer a
+// driver toggle for DLLs we put there.
+async function detectUpscalers(exeDir, options = {}) {
+  const { added = [], addedRoot = exeDir, isSigned = authenticodeSigned, maxDepth = UPSCALER_DEPTH } = options;
+  const ours = new Set((Array.isArray(added) ? added : [])
+    .filter((item) => typeof item === 'string')
+    .map((item) => path.resolve(addedRoot, item).toLowerCase()));
+  const found = emptyUpscalers();
+  const fsr31Files = [];
+
+  (function look(dir, depth) {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (depth < maxDepth && !SKIP_DIRS.has(entry.name.toLowerCase()) && !/^_DLSS5_Backup$/i.test(entry.name)) look(full, depth + 1);
+        continue;
+      }
+      if (!/\.dll$/i.test(entry.name) || ours.has(full.toLowerCase())) continue;
+      for (const [key, patterns] of Object.entries(UPSCALER_PATTERNS)) {
+        if (!patterns.some((pattern) => pattern.test(entry.name))) continue;
+        found[key] = true;
+        if (key === 'fsr31') fsr31Files.push(full);
+      }
+    }
+  })(exeDir, 0);
+
+  if (fsr31Files.length) {
+    // One verdict for the folder: any signed FSR 3.1 runtime is enough, and a
+    // probe that cannot run at all reads as unsigned rather than as trusted.
+    for (const file of fsr31Files) {
+      try { if (await isSigned(file)) { found.fsr31Signed = true; break; } } catch { /* unverified, not signed */ }
+    }
+  }
+  found.any = UPSCALER_INPUTS.some((key) => found[key]);
+  return found;
+}
 const STREAMLINE_FILE = /^sl\.[a-z_]+\.dll$/i;
 const RESHADE_HOOKS = ['dxgi.dll', 'd3d12.dll', 'd3d11.dll', 'd3d9.dll', 'opengl32.dll', 'dinput8.dll'];
 
@@ -610,6 +691,19 @@ async function scanGame(gameDir) {
       }
     } catch {}
   }
+  // What each candidate's own folder already ships. Cached per directory,
+  // because most candidates in a game share one, and the Authenticode probe
+  // is the expensive part.
+  const inventories = new Map();
+  for (const candidate of exeCandidates) {
+    const dir = path.dirname(candidate.path);
+    const key = dir.toLowerCase();
+    if (!inventories.has(key)) {
+      inventories.set(key, await detectUpscalers(dir, { added: install ? install.added : [], addedRoot: gameDir }));
+    }
+    candidate.upscalers = { ...inventories.get(key) };
+  }
+
   let reshade = chosen ? inspectReShade(path.dirname(chosen.path)) : inspectReShade(gameDir);
   if (!reshade.installed && install && install.vulkanLayer &&
       fs.existsSync(install.vulkanLayer.manifest || '')) {
@@ -733,5 +827,6 @@ function scanSource(sourceDir) {
 module.exports = {
   scanGame, scanSource, walk, selectPrimaryDlss, xboxExecutables, playableRoleScore, inspectReShade,
   isVulkanWrapper, vulkanWrapperBeside,
-  gameApiProfile, rdr2Renderer, rdr2SettingsFiles
+  gameApiProfile, rdr2Renderer, rdr2SettingsFiles,
+  detectUpscalers, emptyUpscalers, authenticodeSigned, UPSCALER_PATTERNS, UPSCALER_INPUTS
 };
