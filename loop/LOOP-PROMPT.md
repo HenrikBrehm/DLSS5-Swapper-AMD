@@ -28,7 +28,7 @@ Repo: `C:\Users\henri\Documents\Brain\FG-Wpc\upscaler-swapper` · Branch: `amd-p
 
    Claude-Session: https://claude.ai/code/session_01CMhhPHn6LQ7wo82zvUpoxv
    ```
-   Typen: `feat`, `fix`, `test`, `docs`, `chore`. Heading in TASKS.md auf `[v]` + `commit: <kurz-hash>` setzen, STATE.md-Zeile anhängen, beides im selben Commit.
+   Typen: `feat`, `fix`, `test`, `docs`, `chore`. Danach in einem **zweiten** Commit `chore(loop): <ID> verifiziert (<kurz-hash>)`: Heading in TASKS.md auf `[v]` + `commit: <kurz-hash>` setzen und STATE.md-Zeile anhängen (der Hash des Code-Commits ist erst danach bekannt).
 7. **Berichten.** Eine kurze Nachricht auf Deutsch: Aufgabe, Ergebnis (grün/rot/blockiert), Commit, nächste Aufgabe, offene Mensch-Aufgaben.
 8. **Nächste Iteration planen.** `ScheduleWakeup` mit demselben Prompt:
    - nach `[v]`: `delaySeconds: 60, noop: false`
