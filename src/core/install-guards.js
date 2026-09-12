@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
+const gpuDetect = require('./gpu-detect');
 function run(file, args) {
   return new Promise((resolve, reject) => execFile(file, args, { windowsHide: true, timeout: 20000, maxBuffer: 4 * 1024 * 1024 },
     (error, stdout) => error ? reject(error) : resolve(stdout)));
@@ -86,15 +87,36 @@ function driverNames(rows) { return (rows || []).map(row => `${row.name} - ${row
 function gpuModelSupported(rows) { return rows.some(blackwell); }
 function driverSupported(rows) { return rows.some(row => blackwell(row) && driverNumber(row) >= OPTI_DRIVER); }
 function gpuSupported(rows) { return gpuModelSupported(rows) && driverSupported(rows); }
-async function gpuInfo(runner = run) {
-  try {
-    const output = await runner('nvidia-smi.exe', ['--query-gpu=name,driver_version', '--format=csv,noheader']);
-    return output.trim().split(/\r?\n/).filter(Boolean).map(line => {
-      const [name, driver] = line.split(',').map(s => s.trim());
-      return { name, driver };
-    });
-  } catch { return null; }
+// Every adapter in the machine, not just the ones nvidia-smi knows about.
+// This used to shell out to nvidia-smi.exe alone, which meant an AMD machine
+// answered "no GPU at all" and every check downstream had to treat that as
+// unknown. gpu-detect merges nvidia-smi, Win32_VideoController, the display
+// class registry and the DriverStore instead.
+//
+// The return shape is unchanged for NVIDIA rows - `{name, driver, ...}` with
+// the driver string nvidia-smi reports - so driverNeuralFault, driverNames,
+// gpuModelSupported and driverSupported keep working untouched. An empty
+// result stays `null` rather than `[]`, because that is what the existing
+// callers in main.js already branch on.
+async function gpuInfo(deps = {}) {
+  const rows = await gpuDetect.detect(deps);
+  return rows.length ? rows : null;
 }
+
+// One vendor, or 'mixed' when the machine has adapters from several. Rows
+// written by hand elsewhere carry no vendor field and read as 'unknown',
+// which is the honest answer for them.
+function vendorOf(rows) {
+  const vendors = new Set((rows || []).map(row => row && row.vendor).filter(vendor => vendor && vendor !== 'unknown'));
+  if (!vendors.size) return 'unknown';
+  return vendors.size > 1 ? 'mixed' : vendors.values().next().value;
+}
+
+// The Radeon in the machine, if there is one. Deliberately independent of
+// vendorOf: a laptop with a Radeon beside an RTX is 'mixed', and it would be
+// wrong to withhold the AMD routes from it on that basis.
+function amdRow(rows) { return (rows || []).find(row => row && row.vendor === 'amd') || null; }
+function amdFsr4Ready(rows) { const row = amdRow(rows); return Boolean(row && row.fsr4Capable); }
 function antiCheatPresent(gameDir) {
   const queue = [[gameDir, 0]];
   let examined = 0;
@@ -111,4 +133,4 @@ function antiCheatPresent(gameDir) {
   }
   return false;
 }
-module.exports = { assertGameClosed, executableLocked, matchingProcesses, gpuInfo, gpuSupported, gpuModelSupported, driverSupported, driverNeuralFault, driverNames, antiCheatPresent };
+module.exports = { assertGameClosed, executableLocked, matchingProcesses, gpuInfo, gpuSupported, gpuModelSupported, driverSupported, driverNeuralFault, driverNames, antiCheatPresent, vendorOf, amdRow, amdFsr4Ready };
