@@ -4,6 +4,18 @@
 
 <h1 align="center">DLSS 5 Swapper</h1>
 
+> **This is an AMD fork.** It adds FSR 4 routes for Radeon cards and leaves the
+> NVIDIA ones untouched. If you have an NVIDIA card, use the original:
+> [rakanki911/DLSS5-Swapper](https://github.com/rakanki911/DLSS5-Swapper).
+> For what the AMD side does and does not do, see **[README-AMD.md](README-AMD.md)**
+> (English and German). Work in progress: tested in code, not yet confirmed
+> against a running game.
+>
+> **Dies ist ein AMD-Fork.** Er ergänzt FSR-4-Routen für Radeon-Karten und
+> lässt die NVIDIA-Routen unangetastet. Mit einer NVIDIA-Karte nimm das
+> Original. Was die AMD-Seite kann und was nicht, steht in
+> **[README-AMD.md](README-AMD.md)**.
+
 <p align="center">
   Install and manage DLSS 5 Neural Rendering for compatible games and emulators.
 </p>
