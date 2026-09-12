@@ -223,7 +223,7 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 - Akzeptanz: ≥ 5 Parser-Tests; JSON valide mit ≥ 100 Einträgen. Guard grün.
 - retries: 0
 
-### [~] 5.6 README und Branding
+### [v] 5.6 README und Branding — commit: fa95143
 - depends: 5.2
 - Ziel: `README-AMD.md` auf Deutsch und Englisch, je ≤ 200 Zeilen: was das Werkzeug tut, die drei Stufen, Voraussetzungen, was nicht geht (Anti-Cheat, RDNA2 bis 2027, Vulkan-Treiber-Override, kein echtes Upscaling ohne Bewegungsvektoren), Verify, Restore, Danksagung an Upstream und OptiScaler. Im Haupt-`README.md` ein Hinweiskasten oben, dass dies ein AMD-Fork ist, mit Link auf das Original.
 - Dateien: neu `README-AMD.md`, `README.md`, `THIRD_PARTY_NOTICES.md`, neu `test/readme-amd.test.js`.
