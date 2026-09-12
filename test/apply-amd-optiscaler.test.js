@@ -224,3 +224,52 @@ test('the licences travel with the binaries, GPL included', async (t) => {
   assert.ok(fs.existsSync(path.join(licenses, 'LICENSE.GPL-3.0.txt')));
   for (const rel of upstream.LICENSES) assert.ok(fs.existsSync(path.join(licenses, path.basename(rel))), rel);
 });
+
+// ---------------------------------------------------------------------------
+// Task 4.2: frame generation is chosen for the game rather than left off.
+// ---------------------------------------------------------------------------
+const features = require('../src/shared/feature-i18n');
+
+test('a DirectX 12 game with no frame generation gets it from the upscaler by default', async (t) => {
+  const config = configFor(t, { upscalers: { dlss: true, any: true } });
+  const manifest = await backends.install(config);
+  assert.equal(manifest.frameGen.fg, 'optifg');
+  const text = fs.readFileSync(path.join(config.gameDir, 'bin', 'x64', 'OptiScaler.ini'), 'utf8');
+  assert.equal(ini.getIni(text, 'FrameGen', 'Enabled'), 'true', 'and it is actually switched on');
+  assert.equal(ini.getIni(text, 'FrameGen', 'FGInput'), 'upscaler');
+});
+
+test('a game with DLSS frame generation gets that converted, and the module to do it', async (t) => {
+  const config = configFor(t, { upscalers: { dlss: true, dlssg: true, any: true } });
+  const manifest = await backends.install(config);
+  assert.equal(manifest.frameGen.fg, 'nukem');
+  // The choice has to reach the copy plan, or the option would be configured
+  // for a module that was never installed.
+  assert.ok(names(path.join(config.gameDir, 'bin', 'x64')).includes('dlssg_to_fsr3_amd_is_better.dll'));
+});
+
+test('a game that already generates its own frames is left alone', async (t) => {
+  const config = configFor(t, { upscalers: { fsr31: true, fsrfg: true, any: true } });
+  const manifest = await backends.install(config);
+  assert.equal(manifest.frameGen.fg, 'native');
+  const text = fs.readFileSync(path.join(config.gameDir, 'bin', 'x64', 'OptiScaler.ini'), 'utf8');
+  assert.equal(ini.getIni(text, 'FrameGen', 'Enabled'), 'false', 'two generators at once is worse than one');
+});
+
+test('an explicit choice always beats the recommendation', async (t) => {
+  const config = configFor(t, { upscalers: { dlss: true, dlssg: true, any: true }, options: { fg: 'none' } });
+  const manifest = await backends.install(config);
+  assert.equal(manifest.optiscaler.fg, 'none');
+  assert.equal(manifest.frameGen.fg, 'nukem', 'the recommendation is still recorded, just not followed');
+});
+
+test('the reason travels with the game and reads in every language', async (t) => {
+  const config = configFor(t, { upscalers: { dlss: true, any: true } });
+  const manifest = await backends.install(config);
+  assert.equal(typeof manifest.frameGen.note, 'string');
+  for (const code of Object.keys(features.catalog)) {
+    const text = features.t(code, manifest.frameGen.note);
+    assert.notEqual(text, manifest.frameGen.note, `${code} fell back to its own key`);
+    assert.ok(text.trim().length > 0, code);
+  }
+});

@@ -10,6 +10,7 @@ const path = require('path');
 const upstream = require('../optiscaler-upstream');
 const optiscaler = require('../optiscaler');
 const ini = require('../feeder-config');
+const { planFrameGen } = require('../fg-plan');
 
 async function install(config, log = () => {}) {
   const { beginManifest, copyTracked, writeTracked, saveActiveManifest } = require('../apply');
@@ -24,8 +25,16 @@ async function install(config, log = () => {}) {
   manifest.route = 'amd-optiscaler';
   manifest.game.bitness = 64;
   manifest.game.apiLabel = config.apiLabel;
-  const resolved = upstream.resolveOptions(config, gpu, options);
+  // Frame generation defaults to whatever the planner recommends for this
+  // game rather than to "off", because "off" is only right for a game that
+  // already has its own - and the planner is what knows the difference.
+  const frameGen = planFrameGen({ api, apiLabel: config.apiLabel, upscalers: config.upscalers, gpu, route: config.planRoute || manifest.route });
+  const chosen = options.fg === undefined ? { ...options, fg: frameGen.configureAs } : options;
+  const resolved = upstream.resolveOptions(config, gpu, chosen);
   manifest.optiscaler = { version: upstream.RELEASE.version, hook: upstream.hookFor(api), ...resolved };
+  // Kept with the game so the interface can say why this was chosen, and so
+  // a later look at the manifest explains itself.
+  manifest.frameGen = frameGen;
 
   const exeDir = path.dirname(exePath);
   for (const item of upstream.copyPlan(optiRoot, api, resolved)) {

@@ -30,6 +30,10 @@ async function install(config, log = () => {}) {
 
   const manifest = await amdOptiscaler.install({
     ...config,
+    // Named explicitly so the frame-generation record in the manifest says
+    // which route actually made the choice, rather than the one whose
+    // installer happened to run it.
+    planRoute: 'engine-upscale',
     options: { inputs: 'none', ...options }
   }, log);
   manifest.route = 'engine-upscale';

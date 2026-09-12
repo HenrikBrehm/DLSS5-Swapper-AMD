@@ -160,3 +160,12 @@ test('the render scale can be chosen, and a silly one is refused', async (t) => 
   const other = setup(t);
   await assert.rejects(backends.install({ ...other.config, options: { renderScale: 200 } }), { code: 'errEngineScale' });
 });
+
+test('the engine route takes the same recommendation, and records its own name', async (t) => {
+  const { config } = setup(t);
+  const manifest = await backends.install(config);
+  assert.equal(manifest.frameGen.fg, 'optifg', 'DirectX 12 with nothing of its own');
+  assert.equal(manifest.route, 'engine-upscale');
+  const text = fs.readFileSync(path.join(config.exeDir || path.join(config.gameDir, 'Moria', 'Binaries', 'Win64'), 'OptiScaler.ini'), 'utf8');
+  assert.equal(ini.getIni(text, 'FrameGen', 'Enabled'), 'true');
+});
