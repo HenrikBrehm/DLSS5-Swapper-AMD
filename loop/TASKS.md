@@ -15,7 +15,7 @@ Gesicherte Fakten (nicht neu recherchieren):
 
 ## Phase 1 – Vendor-Abstraktion + Route `amd-optiscaler`
 
-### [ ] 1.1 GPU-Erkennung generisch (`src/core/gpu-detect.js`)
+### [~] 1.1 GPU-Erkennung generisch (`src/core/gpu-detect.js`)
 - depends: –
 - Ziel: `detect({ runNvidiaSmi, runPowerShell, readRegistry, globDriverStore })` liefert Zeilen `{ name, vendor: 'nvidia'|'amd'|'intel'|'unknown', driver, adrenalin: '26.8.1'|null, rdnaGen: 1|2|3|4|null, mobile: bool, fsr4Capable: bool, fsr4Dll: {path, version}|null }`. Alle externen Aufrufe injizierbar; reine Parser-Funktionen exportiert (`parseNvidiaSmi`, `parseVideoControllers`, `rdnaGenFromName`, `compareVersions`, `fsr4Capable`). Regel: `fsr4Capable = rdnaGen>=4 || (rdnaGen===3 && !mobile && compareVersions(adrenalin,'26.6.2')>=0)`. Namens-Tabelle: `RX 5xxx`→1, `RX 6xxx`→2, `RX 7xxx`→3, `RX 9xxx`→4, `Radeon 7xxM/8xxM`, `Radeon(TM) Graphics`, `780M/890M` → mobile.
 - Dateien: neu `src/core/gpu-detect.js`, neu `test/gpu-detect.test.js`.
