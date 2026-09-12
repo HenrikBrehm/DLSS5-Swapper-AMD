@@ -15,8 +15,61 @@
     if (!target.hasNativeDlss) return 'optiNeedsDlss';
     return null;
   }
-  function routesFor(target, api = target && target.api) {
+  // Every route this application can install or guide, with the tier it
+  // belongs to. `label` is an i18n key rather than text, so the sheet and the
+  // dialogs stay translatable in all 38 languages.
+  //
+  // `needsGpu` says whether the route depends on what the card can do. The
+  // two guided routes touch no file in the game and are offered to anyone.
+  const ROUTE_META = Object.freeze({
+    native: Object.freeze({ vendor: 'nvidia', tier: 1, label: 'routeNative', needsGpu: true }),
+    feeder: Object.freeze({ vendor: 'nvidia', tier: 2, label: 'routeFeeder', needsGpu: true }),
+    optiscaler: Object.freeze({ vendor: 'nvidia', tier: 1, label: 'routeOptiscaler', needsGpu: true }),
+    renodx: Object.freeze({ vendor: 'nvidia', tier: 2, label: 'routeRenodx', needsGpu: true }),
+    'amd-optiscaler': Object.freeze({ vendor: 'amd', tier: 1, label: 'routeAmdOptiscaler', needsGpu: true }),
+    'engine-upscale': Object.freeze({ vendor: 'amd', tier: 2, label: 'routeEngineUpscale', needsGpu: true }),
+    'amd-driver': Object.freeze({ vendor: 'amd', tier: 3, label: 'routeAmdDriver', needsGpu: false }),
+    spatial: Object.freeze({ vendor: 'amd', tier: 3, label: 'routeSpatial', needsGpu: false })
+  });
+  function routeMeta(route) { return (route && ROUTE_META[route]) || null; }
+
+  // OptiScaler is a 64-bit proxy DLL that hooks DXGI or Vulkan. Anything
+  // outside that cannot take either of the two injected AMD routes, whatever
+  // else the game offers.
+  function optiScalerReachable(target, api) {
+    return target.bitness === 64 && !target.emulator &&
+      ['dxgi', 'vulkan'].includes(api) && target.apiLabel !== 'DirectX 10';
+  }
+
+  // The three tiers, in order of how good the result is.
+  //
+  // Tier 1 needs an input OptiScaler can read. Tier 2 is for a game that has
+  // none but runs on an engine whose temporal pass we can claim - today only
+  // Unreal, and only when there is no input already, because a game in tier 1
+  // has nothing to gain from editing its Engine.ini. Tier 3 is the driver and
+  // the spatial fallback, and it is always present so that no game is ever
+  // left with nothing at all.
+  function amdRoutesFor(target, api) {
+    const routes = [];
+    const upscalers = target.upscalers || {};
+    const engine = target.engine || null;
+    if (optiScalerReachable(target, api)) {
+      if (upscalers.any) routes.push('amd-optiscaler');
+      else if (engine && engine.upscalerSlot) routes.push('engine-upscale');
+    }
+    // DirectDraw and DX8 reach the card only through a 32-bit wrapper, and
+    // the driver's own upscaling and frame generation never see them.
+    if (!['d3d8', 'ddraw'].includes(api)) routes.push('amd-driver');
+    routes.push('spatial');
+    return routes;
+  }
+
+  // `gpu` describes one adapter, not the machine: on a mixed machine the
+  // caller passes the Radeon row itself. Called with two arguments, as every
+  // existing caller does, the answer is unchanged.
+  function routesFor(target, api = target && target.api, gpu = null) {
     if (!target || ![32, 64].includes(target.bitness)) return [];
+    if (gpu && gpu.vendor === 'amd') return amdRoutesFor(target, api);
     if (api === 'd3d10' || (api === 'dxgi' && target.apiLabel === 'DirectX 10')) return [];
     // DirectDraw and DX8 both reach modern hardware only through dgVoodoo's
     // 32-bit wrapper, so the Feeder route is the only one either can take.
@@ -49,7 +102,7 @@
       ? 'feeder' : nativeDlss ? 'native' : 'feeder';
     return routes.includes(wanted) ? wanted : (routes[0] || null);
   }
-  const api = { routesFor, recommendedRoute, nativeDlssPresent, optiReason };
+  const api = { routesFor, recommendedRoute, nativeDlssPresent, optiReason, routeMeta, ROUTE_META, amdRoutesFor };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.installRoutes = api;
 })(typeof window !== 'undefined' ? window : globalThis);

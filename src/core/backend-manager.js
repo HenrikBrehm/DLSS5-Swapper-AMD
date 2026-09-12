@@ -8,6 +8,7 @@ const core = require('./apply');
 const ini = require('./feeder-config');
 const optiscaler = require('./optiscaler');
 const compatibility = require('./compatibility');
+const routes = require('../shared/install-routes');
 
 function readManifest(gameDir) {
   const file = path.join(core.backupRoot(gameDir), 'manifest.json');
@@ -21,7 +22,15 @@ function profileFile(gameDir, exePath, api, route) {
   // The profile file is named after the route, so this list is what decides
   // whether a route can keep its own settings at all - and a route missing
   // from it fails the install with nothing but "Invalid route".
-  if (!['native', 'feeder', 'optiscaler', 'renodx'].includes(route)) throw new Error('Invalid route');
+  //
+  // Two checks, on purpose. The four ReShade-era names stay spelled out
+  // because multipass.test.js pins that exact line; it is the regression
+  // guard for the bug where a route was offered, chosen, and then rejected at
+  // install. The registry lookup beside it is what stops that bug returning,
+  // by covering every route the sheet can offer instead of a hand-maintained
+  // list someone has to remember to update.
+  if (!['native', 'feeder', 'optiscaler', 'renodx'].includes(route) &&
+      !Object.prototype.hasOwnProperty.call(routes.ROUTE_META, route)) throw new Error('Invalid route');
   const id = crypto.createHash('sha256').update(`${path.relative(gameDir, exePath).toLowerCase()}|${api}`).digest('hex').slice(0, 24);
   return journal.safePath(gameDir, `_DLSS5_Backup/.profiles/${id}-${route}.json`);
 }
@@ -31,9 +40,18 @@ function profileFile(gameDir, exePath, api, route) {
 // until someone deleted the profile by hand. One list, used by both.
 const CONFIG_FILE = /\.(ini|cfg|txt)$/i;
 
+// Which settings files a route owns, and therefore which ones are carried
+// across when the user switches backends.
+//
+// The two guided AMD routes own none: they write nothing into the game and
+// only record what the person ticked off in the Adrenalin control panel.
+const OPTISCALER_ROUTES = ['optiscaler', 'amd-optiscaler', 'engine-upscale'];
+const GUIDED_ROUTES = ['amd-driver', 'spatial'];
+
 function configPaths(gameDir, exePath, route) {
   const dir = path.dirname(exePath);
-  if (route === 'optiscaler') return [path.join(dir, 'OptiScaler.ini')];
+  if (GUIDED_ROUTES.includes(route)) return [];
+  if (OPTISCALER_ROUTES.includes(route)) return [path.join(dir, 'OptiScaler.ini')];
   const reshade = path.join(dir, 'ReShade.ini');
   const preset = ini.presetPath(dir, ini.readText(reshade));
   const files = [reshade, path.join(dir, 'dlss5-feed.cfg'), path.join(dir, 'host64', 'ReShade.ini')];
@@ -147,4 +165,4 @@ async function restore(gameDir, log = () => {}) {
   await core.restore(gameDir, log);
   return true;
 }
-module.exports = { install, restore, readManifest, saveProfile, loadProfile };
+module.exports = { install, restore, readManifest, saveProfile, loadProfile, configPaths, profileFile, OPTISCALER_ROUTES, GUIDED_ROUTES };
