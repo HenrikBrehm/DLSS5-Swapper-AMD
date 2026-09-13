@@ -64,7 +64,24 @@ function load({ rows = [RDNA3], upscalers = DLSS_ONLY, engine = NO_ENGINE, paylo
       Tray: function () { return { setContextMenu() {}, setToolTip() {}, on() {}, isDestroyed: () => false }; },
       Menu: { buildFromTemplate: (t) => t }, nativeImage: { createFromPath: () => ({ isEmpty: () => true }) },
       shell: {}, clipboard: {}, Notification: function () {}, safeStorage: {},
-      dialog: { showMessageBox: async (_win, options) => { calls.dialogs.push(options); return { response: 0 }; } }
+      // Validating, because a stub more forgiving than the real thing is how
+      // "Detail must be a string" got through ten green tests and straight
+      // into the first install anybody tried. Electron checks these and
+      // throws; so does this.
+      dialog: {
+        showMessageBox: async (_win, options) => {
+          for (const field of ['title', 'message', 'detail', 'type']) {
+            if (options[field] !== undefined && typeof options[field] !== 'string') {
+              throw new TypeError(`${field[0].toUpperCase()}${field.slice(1)} must be a string`);
+            }
+          }
+          for (const button of options.buttons || []) {
+            if (typeof button !== 'string') throw new TypeError('Button must be a string');
+          }
+          calls.dialogs.push(options);
+          return { response: 0 };
+        }
+      }
     },
     './src/core/install-guards': {
       ...realRequire('./src/core/install-guards'),

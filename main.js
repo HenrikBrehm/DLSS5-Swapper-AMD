@@ -74,7 +74,10 @@ function amdDialogContent(rows, t = featureText) {
       // detected at all, claiming the card cannot run FSR 4 would be a guess.
       row ? (guards.amdFsr4Ready(rows) ? t('amdFsr4Ready') : t('amdFsr4Old')) : null,
       t('amdHint'), t('amdAntiCheatHint'), t('backendHint')
-    ].filter(Boolean),
+      // Joined, because Electron rejects an array here with "Detail must be a
+      // string" and takes the whole install down with it. The NVIDIA dialog
+      // this was modelled on joins the same way; the copy lost the last call.
+    ].filter(Boolean).join('\n\n'),
     buttons: [t('installOpti'), t('cancel')],
     defaultId: 1, cancelId: 1
   };
