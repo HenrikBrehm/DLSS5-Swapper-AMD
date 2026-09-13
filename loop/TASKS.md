@@ -285,8 +285,17 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 2 neue Tests, darunter der Nachweis, dass ein Spiel mit ähnlichem Namen weiterhin gefunden wird. Guard grün.
 - retries: 0
 
+### [ ] 6.7 Anti-Cheat ohne Spur auf der Platte erkennen
+- depends: 6.3
+- Befund: `reality-check` stuft Call of Duty als Stufe 1 ein und wuerde damit empfehlen, eine Proxy-DLL neben die Programmdatei zu legen. Ricochet arbeitet im Kern des Betriebssystems und hinterlaesst im Spielordner nichts, was `antiCheatPresent` finden koennte. Dieselbe Klasse betrifft Vanguard und andere. Fortnite dagegen wird korrekt erkannt, sobald der echte Programmpfad mitgegeben wird; dort ist nichts kaputt.
+- Ziel: Eine kurze, ausdrueckliche Liste von Titeln mit Anti-Cheat, das auf der Platte unsichtbar ist, nach dem Vorbild der bereits vorhandenen Ausnahme fuer Arc Raiders. Erkennung ueber den Ordnernamen. Zusaetzlich die Tiefensuche so weit erhoehen, dass die Unreal-Form `<Projekt>/Binaries/Win64/EasyAntiCheat` auch ohne Programmpfad gefunden wird, mit Beschneidung der grossen Inhaltsordner, damit das Pruefbudget nicht vorher aufgebraucht ist.
+- Grundsatz: Im Zweifel erkennen. Eine falsche Erkennung kostet den Menschen eine Stufe, eine verpasste kostet ihn sein Konto.
+- Dateien: `src/core/compatibility.js`, `src/core/install-guards.js`, zugehoerige Tests erweitern.
+- Akzeptanz: >= 5 neue Tests, darunter die Unreal-Form ohne Programmpfad und der Nachweis, dass ein harmloses Spiel weiterhin nicht als Anti-Cheat gilt. Guard gruen.
+- retries: 0
+
 ### [ ] 6.6 Bericht fortschreiben
-- depends: 6.1, 6.2, 6.3, 6.4, 6.5
+- depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7
 - Ziel: `loop/REPORT.md` bekommt einen Abschnitt über Phase 6: was der erste echte Durchlauf widerlegt hat, was jetzt gilt, und was weiterhin nur durch ein laufendes Spiel zu klären ist.
 - Dateien: `loop/REPORT.md`, `README-AMD.md` falls eine Aussage darin nicht mehr stimmt.
 - Akzeptanz: jede Aufgaben-ID aus Phase 6 kommt mit Endzustand vor. Guard grün. Danach `ScheduleWakeup(stop: true)`.
