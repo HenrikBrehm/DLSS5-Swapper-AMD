@@ -35,7 +35,18 @@ const SKIP_DIRS = new Set([
 const MAX_SCAN_DEPTH = 12;
 
 // Installers, launchers and anti-cheat helpers are never the game itself.
+//
+// BUNDLED_TOOL is the other kind: real, signed, useful programs that a game
+// ships alongside itself. Forts was reported with ffmpeg.exe as its
+// executable, with Forts.exe right beside it, and every answer after that
+// described ffmpeg - its rendering API, its bitness, its tier. Nothing
+// downstream could notice, because by then the wrong file was the game.
+//
+// Kept separate and every entry anchored on a word boundary, because the one
+// real cost of this list is refusing to see a game: Curling is not curl,
+// FFXIV is not ffmpeg, and 7 Days is not 7z.
 const NOT_A_GAME = /^(unins|setup|install|vcredist|vc_redist|dxsetup|dxwebsetup|oalinst|uninstall|crashreport|crashhandler|easyanticheat|eac|battleye|be_service|launcher|activation|patch|update|dotnetfx|touchup|rapidcrc|autorun|autoplay|quicksfv|readme|config|benchmark|report|helper|service|cleanup|modorganizer|redlauncher|skse\d*_loader|hlds\b|srcds\b|steamerrorreporter|dgvoodoocpl|reshade_setup)/i;
+const BUNDLED_TOOL = /^(ffmpeg|ffprobe|ffplay|7z(?:a|r|ip)?|curl|wget|unrar|unzip|crashpad[\w-]*|epicwebhelper|notification_helper)\b/i;
 
 const DLSS_FILE = /^(nvngx_dlss[a-z_]*\.dll|nvngx\.dll|_nvngx\.dll)$/i;
 
@@ -568,7 +579,7 @@ async function scanGame(gameDir) {
   await walk(gameDir, async (full, name, depth) => {
     const lower = name.toLowerCase();
     if (lower.endsWith('.exe')) {
-      if (NOT_A_GAME.test(lower)) return;
+      if (NOT_A_GAME.test(lower) || BUNDLED_TOOL.test(lower)) return;
       let size = 0;
       try { size = (await fs.promises.stat(full)).size; } catch { return; }
       const bitness = pe.getBitness(full);
@@ -898,5 +909,5 @@ module.exports = {
   isVulkanWrapper, vulkanWrapperBeside,
   gameApiProfile, rdr2Renderer, rdr2SettingsFiles,
   detectUpscalers, emptyUpscalers, authenticodeSigned, UPSCALER_PATTERNS, UPSCALER_INPUTS,
-  pluginRoots, PLUGIN_DEPTH
+  pluginRoots, PLUGIN_DEPTH, NOT_A_GAME, BUNDLED_TOOL
 };
