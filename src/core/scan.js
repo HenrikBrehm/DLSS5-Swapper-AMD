@@ -54,6 +54,37 @@ const UPSCALER_INPUTS = Object.freeze(['dlss', 'fsr2', 'fsr31', 'xess']);
 // bundled tool or an unrelated mod further down is not read as the game's own.
 const UPSCALER_DEPTH = 2;
 
+// Unreal is the exception, and it is a big one: it keeps third-party runtimes
+// in a plugin tree rather than beside the executable. Return to Moria ships
+//   Engine\Plugins\Runtime\Nvidia\DLSS\Binaries\ThirdParty\Win64\nvngx_dlss.dll
+// while its executable sits in Moria\Binaries\Win64 - six levels down a
+// different branch. The two-level window never saw it, so the game was
+// reported as shipping no upscaler and routed to tier 2 when it belongs in
+// tier 1. Unreal being the most common engine there is, that one blind spot
+// covered a whole class of games.
+//
+// The fix is deliberately narrow. The window around the executable stays at
+// two levels; the plugin trees are searched as named extra roots. Widening
+// the general depth instead would start reading bundled tools and parked
+// backups as the game's own, which is the thing the limit exists to prevent.
+const PLUGIN_DEPTH = 7;
+
+// The plugin trees of an Unreal install: the engine's own, plus one per
+// project folder. Anything else is left alone. Returns only folders that are
+// really there, so a non-Unreal game costs one failed stat and nothing more.
+function pluginRoots(gameDir) {
+  if (!gameDir || typeof gameDir !== 'string') return [];
+  let names = [];
+  try { names = fs.readdirSync(gameDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch { return []; }
+  const roots = [];
+  for (const name of names) {
+    if (SKIP_DIRS.has(name.toLowerCase())) continue;
+    const candidate = path.join(gameDir, name, 'Plugins');
+    try { if (fs.statSync(candidate).isDirectory()) roots.push(candidate); } catch { /* not this one */ }
+  }
+  return roots;
+}
+
 function emptyUpscalers() {
   return { dlss: false, dlssg: false, streamline: false, fsr2: false, fsr31: false, fsr31Signed: false, xess: false, any: false };
 }
@@ -78,35 +109,43 @@ async function authenticodeSigned(file) {
 // without this a second scan would report those as the game's own and offer a
 // driver toggle for DLLs we put there.
 async function detectUpscalers(exeDir, options = {}) {
-  const { added = [], addedRoot = exeDir, isSigned = authenticodeSigned, maxDepth = UPSCALER_DEPTH } = options;
+  const {
+    added = [], addedRoot = exeDir, isSigned = authenticodeSigned,
+    maxDepth = UPSCALER_DEPTH, gameDir = null, pluginDepth = PLUGIN_DEPTH
+  } = options;
   const ours = new Set((Array.isArray(added) ? added : [])
     .filter((item) => typeof item === 'string')
     .map((item) => path.resolve(addedRoot, item).toLowerCase()));
   const found = emptyUpscalers();
-  const fsr31Files = [];
+  const fsr31Files = new Map();
 
-  (function look(dir, depth) {
+  function look(dir, depth, limit) {
     let entries = [];
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (depth < maxDepth && !SKIP_DIRS.has(entry.name.toLowerCase()) && !/^_DLSS5_Backup$/i.test(entry.name)) look(full, depth + 1);
+        if (depth < limit && !SKIP_DIRS.has(entry.name.toLowerCase()) && !/^_DLSS5_Backup$/i.test(entry.name)) look(full, depth + 1, limit);
         continue;
       }
       if (!/\.dll$/i.test(entry.name) || ours.has(full.toLowerCase())) continue;
       for (const [key, patterns] of Object.entries(UPSCALER_PATTERNS)) {
         if (!patterns.some((pattern) => pattern.test(entry.name))) continue;
         found[key] = true;
-        if (key === 'fsr31') fsr31Files.push(full);
+        // Keyed by path: a file reachable from the executable and from a
+        // plugin root at once must not be sent to the probe twice.
+        if (key === 'fsr31') fsr31Files.set(full.toLowerCase(), full);
       }
     }
-  })(exeDir, 0);
+  }
 
-  if (fsr31Files.length) {
+  look(exeDir, 0, maxDepth);
+  for (const root of pluginRoots(gameDir)) look(root, 0, pluginDepth);
+
+  if (fsr31Files.size) {
     // One verdict for the folder: any signed FSR 3.1 runtime is enough, and a
     // probe that cannot run at all reads as unsigned rather than as trusted.
-    for (const file of fsr31Files) {
+    for (const file of fsr31Files.values()) {
       try { if (await isSigned(file)) { found.fsr31Signed = true; break; } } catch { /* unverified, not signed */ }
     }
   }
@@ -699,7 +738,9 @@ async function scanGame(gameDir) {
     const dir = path.dirname(candidate.path);
     const key = dir.toLowerCase();
     if (!inventories.has(key)) {
-      inventories.set(key, await detectUpscalers(dir, { added: install ? install.added : [], addedRoot: gameDir }));
+      inventories.set(key, await detectUpscalers(dir, {
+        added: install ? install.added : [], addedRoot: gameDir, gameDir
+      }));
     }
     candidate.upscalers = { ...inventories.get(key) };
   }
@@ -828,5 +869,6 @@ module.exports = {
   scanGame, scanSource, walk, selectPrimaryDlss, xboxExecutables, playableRoleScore, inspectReShade,
   isVulkanWrapper, vulkanWrapperBeside,
   gameApiProfile, rdr2Renderer, rdr2SettingsFiles,
-  detectUpscalers, emptyUpscalers, authenticodeSigned, UPSCALER_PATTERNS, UPSCALER_INPUTS
+  detectUpscalers, emptyUpscalers, authenticodeSigned, UPSCALER_PATTERNS, UPSCALER_INPUTS,
+  pluginRoots, PLUGIN_DEPTH
 };

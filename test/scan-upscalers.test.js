@@ -148,3 +148,122 @@ test('a scanned game carries the inventory on every candidate it offers', async 
   }
   assert.equal(scan.chosen.upscalers.dlss, true);
 });
+
+// ---------------------------------------------------------------------------
+// Task 6.1: the Unreal plugin blind spot.
+//
+// Found by running the finished chain against the reference machine's real
+// library rather than against fixtures. Return to Moria ships
+// Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll
+// while its executable sits in Moria/Binaries/Win64. Six directory levels and
+// a different branch apart, so the two-level window never saw it, the scan
+// reported no upscaler, and the router recommended tier 2 for a game that
+// belongs in tier 1. The compatibility list had said so all along.
+//
+// Unreal is the most common engine there is, and this is exactly where Unreal
+// puts third-party runtimes, so the blind spot covered a whole class of games.
+const { pluginRoots } = require('../src/core/scan');
+
+const MORIA_DLSS = 'Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll';
+
+test('the real Return to Moria layout is recognised as shipping DLSS', async (t) => {
+  const gameDir = put(temp(t), MORIA_DLSS, 'Moria/Binaries/Win64/Moria-Win64-Shipping.exe');
+  const exeDir = path.join(gameDir, 'Moria', 'Binaries', 'Win64');
+
+  const blind = await detectUpscalers(exeDir, { isSigned: never });
+  assert.equal(blind.dlss, false, 'without the game folder there is nothing to go on');
+
+  const seeing = await detectUpscalers(exeDir, { gameDir, isSigned: never });
+  assert.equal(seeing.dlss, true, 'the engine plugin tree is searched too');
+  assert.equal(seeing.any, true, 'which makes this a tier 1 game');
+});
+
+test('a plugin the game ships itself is found as well as an engine one', async (t) => {
+  const gameDir = put(temp(t), 'Moria/Plugins/DLSSUpscaler/Binaries/ThirdParty/Win64/nvngx_dlss.dll');
+  const exeDir = path.join(gameDir, 'Moria', 'Binaries', 'Win64');
+  fs.mkdirSync(exeDir, { recursive: true });
+
+  const found = await detectUpscalers(exeDir, { gameDir, isSigned: never });
+  assert.equal(found.dlss, true, 'per-project plugins live beside the project, not under Engine');
+});
+
+test('an FSR 3.1 runtime in the plugin tree is still put through the signature probe', async (t) => {
+  // The signed check decides whether the Adrenalin toggle is offered at all,
+  // so finding the file in a new place must not quietly skip it.
+  const gameDir = put(temp(t), 'Engine/Plugins/Runtime/AMD/FSR3/Binaries/ThirdParty/Win64/amd_fidelityfx_dx12.dll');
+  const exeDir = path.join(gameDir, 'Game', 'Binaries', 'Win64');
+  fs.mkdirSync(exeDir, { recursive: true });
+
+  const asked = [];
+  const found = await detectUpscalers(exeDir, {
+    gameDir,
+    isSigned: async (file) => { asked.push(path.basename(file)); return true; }
+  });
+  assert.equal(found.fsr31, true);
+  assert.equal(found.fsr31Signed, true);
+  assert.deepEqual(asked, ['amd_fidelityfx_dx12.dll'], 'the probe saw the file it found');
+});
+
+test('the two-level window around the executable is unchanged by all this', async (t) => {
+  // The widening is deliberately confined to plugin trees. A DLL parked three
+  // levels below the executable, in an ordinary folder, is still somebody's
+  // backup or an unrelated mod rather than the game shipping an upscaler -
+  // and that stays true even when the game folder is known.
+  const gameDir = put(temp(t), 'Game/Binaries/Win64/a/b/c/nvngx_dlss.dll');
+  const exeDir = path.join(gameDir, 'Game', 'Binaries', 'Win64');
+
+  const found = await detectUpscalers(exeDir, { gameDir, isSigned: never });
+  assert.equal(found.dlss, false, 'depth 2 still governs everywhere outside a plugin root');
+});
+
+test('files we installed ourselves stay excluded wherever they are found', async (t) => {
+  const gameDir = put(temp(t), 'Engine/Plugins/Runtime/AMD/FSR3/Binaries/ThirdParty/Win64/amd_fidelityfx_dx12.dll');
+  const exeDir = path.join(gameDir, 'Game', 'Binaries', 'Win64');
+  fs.mkdirSync(exeDir, { recursive: true });
+
+  const found = await detectUpscalers(exeDir, {
+    gameDir,
+    // Written the way a manifest records it: a relative path in the platform's
+    // own separator, which on Windows is the backslash.
+    added: [path.join('Engine', 'Plugins', 'Runtime', 'AMD', 'FSR3', 'Binaries', 'ThirdParty', 'Win64', 'amd_fidelityfx_dx12.dll')],
+    addedRoot: gameDir,
+    isSigned: never
+  });
+  assert.equal(found.fsr31, false, 'the exclusion follows the file, not the folder');
+});
+
+test('pluginRoots names the Unreal trees and nothing else', async (t) => {
+  const gameDir = put(temp(t),
+    'Engine/Plugins/keep.txt',
+    'Moria/Plugins/keep.txt',
+    'Moria/Content/Paks/keep.txt',
+    'Tools/keep.txt');
+  const roots = pluginRoots(gameDir)
+    .map((dir) => path.relative(gameDir, dir).split(path.sep).join('/'))
+    .sort();
+  assert.deepEqual(roots, ['Engine/Plugins', 'Moria/Plugins']);
+});
+
+test('a game with no plugin tree costs nothing and answers empty', async (t) => {
+  const gameDir = put(temp(t), 'UnityPlayer.dll', 'Game.exe');
+  assert.deepEqual(pluginRoots(gameDir), [], 'nothing to search');
+  assert.deepEqual(pluginRoots(null), [], 'and no game folder is not a crash');
+  assert.deepEqual(pluginRoots(path.join(os.tmpdir(), 'gone-' + Date.now())), [], 'nor is a folder that vanished');
+
+  const found = await detectUpscalers(gameDir, { gameDir, isSigned: never });
+  assert.deepEqual(found, emptyUpscalers());
+});
+
+test('a scanned Unreal game reports the plugin upscaler on its candidates', async (t) => {
+  // The end-to-end version of the bug: scanGame is what main.js calls, and it
+  // is the path that produced the wrong tier on the reference machine.
+  const gameDir = put(temp(t), MORIA_DLSS);
+  const exeDir = path.join(gameDir, 'Moria', 'Binaries', 'Win64');
+  fs.mkdirSync(exeDir, { recursive: true });
+  writePe(path.join(exeDir, 'Moria-Win64-Shipping.exe'), { bitness: 64, size: 300 * 1024 });
+
+  const scan = await scanGame(gameDir);
+  assert.ok(scan.chosen, 'the shipping executable is chosen');
+  assert.equal(scan.chosen.upscalers.dlss, true, 'and it knows the game ships DLSS');
+  assert.equal(scan.chosen.upscalers.any, true);
+});
