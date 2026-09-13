@@ -269,7 +269,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 5 Tests gegen erfundene Spielordner; das Skript selbst greift im Test nie auf echte Ordner zu. Guard grün.
 - retries: 0
 
-### [ ] 6.4 Die drei offenen Lücken aus dem Abschlussbericht schließen
+### [v] 6.4 Die drei offenen Lücken aus dem Abschlussbericht schließen — commit: 930a1cb
 - depends: 6.1
 - Befund: Der Bericht nennt drei bewusst offen gelassene Lücken, weil keine Aufgabe die betroffenen Dateien besaß.
 - Ziel: `scan.js` reicht `engine`, `antiCheat` und `upscalers` an jedes Ziel durch; `main.js` übergibt Adapterzeilen und Engine an `diagnostics.report()`.
