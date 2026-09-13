@@ -142,3 +142,145 @@ verstecken, und die verbliebene Spiegelung durch einen Test abzusichern.
 Kein Test wurde gelöscht, abgeschwächt oder umgeschrieben, um einen Fehlschlag
 zu beseitigen. Zweimal war der Test falsch und wurde korrigiert; beides steht
 in `loop/STATE.md` mit Begründung.
+
+---
+
+# Nachtrag: Phase 6
+
+Der Bericht oben endete mit dem Satz, nichts sei an einem laufenden Spiel
+bestätigt worden. Das stimmt weiterhin. Aber zwischen „durch Tests
+abgesichert" und „an einem Spiel bestätigt" lag eine Stufe, die niemand
+genommen hatte: die fertige Kette einmal gegen die Spiele laufen zu lassen,
+die auf diesem Rechner wirklich installiert sind, und die echten Dateien
+einmal wirklich zu installieren.
+
+Das wurde jetzt gemacht. Es hat in den ersten fünf Minuten einen Fehler
+gefunden, der alle 509 Tests überlebt hatte, und danach noch vier weitere.
+
+## Was der erste echte Durchlauf widerlegt hat
+
+**Return to Moria ist Stufe 1, nicht Stufe 2.** Der offene Punkt aus dem
+Bericht oben ist geklärt, und die Kompatibilitätsliste hatte recht. Das Spiel
+führt sehr wohl `nvngx_dlss.dll`, nur liegt die Datei unter
+`Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/`, während die
+Programmdatei in `Moria/Binaries/Win64` steht. Der Scan sah zwei Ebenen um die
+Programmdatei und fand deshalb nie etwas. Das ist genau die Form, die jedes
+Unreal-Spiel für Fremdbibliotheken benutzt, also betraf der blinde Fleck eine
+ganze Klasse von Spielen und nicht ein einzelnes.
+
+**Das Werkzeug hätte angeboten, in Call of Duty zu injizieren.** Ricochet
+arbeitet im Kern des Betriebssystems und hinterlässt im Spielordner nichts,
+was eine Dateisuche finden könnte, also meldete die Suche korrekt nichts und
+das Spiel sah unbedenklich aus. Das ist der einzige Fehler in diesem Projekt,
+der einen Menschen etwas kostet, das er nicht zurückbekommt.
+
+**Bei Forts war die Programmdatei `ffmpeg.exe`.** `Forts.exe` lag daneben.
+Jede Antwort danach beschrieb ffmpeg statt das Spiel, und nichts weiter unten
+in der Kette konnte das bemerken.
+
+**Die Sicherungskopie der Engine-Konfiguration blieb liegen.** Nach einer
+vollständigen Wiederherstellung stand `_DLSS5_Backup/engine-config/Engine.ini`
+dauerhaft im Spielordner und hielt eine veraltete Kopie der Einstellungen des
+Menschen fest, obwohl das README ausdrücklich das Gegenteil verspricht.
+
+## Was jetzt zusätzlich belegt ist
+
+| Was | Wie belegt |
+|---|---|
+| Die Anwendung läuft überhaupt | Der Renderer wird in einer Browser-Attrappe geladen und ausgeführt |
+| Die Installation mit dem echten Archiv | 13 Dateien, rund 176 MB, Proxy als `dxgi.dll` |
+| Die geschriebene FSR-4-Konfiguration | `Dx12Upscaler=fsr31`, `Fsr4Update=true`, `Fsr4ForceEnableInt8=true` |
+| Die Wiederherstellung | Jede Ursprungsdatei mit ihrer Ursprungsprüfsumme zurück |
+| Stufe 2 von Anfang bis Ende | Engine-Schalter gesetzt und rückstandsfrei entfernt, in beiden Ausgangslagen |
+| Anti-Cheat | Fortnite und Call of Duty landen beide auf Stufe 3 |
+
+## Was dieser Rechner tatsächlich bekäme
+
+Zwölf Spiele gefunden. Die Zahl, um die es geht, ist nicht wie viele eine
+Antwort bekommen, denn das sind alle, sondern wie viele echtes Upscaling
+bekommen.
+
+| | |
+|---|---|
+| Echtes Upscaling (Stufe 1) | 3 |
+| Echtes Upscaling (Stufe 2) | 0 |
+| Nur Ausweichlösung (Stufe 3) | 8 |
+| Keine Programmdatei gefunden | 1 |
+
+Das ist die ehrliche Antwort auf „geht Upscaling jetzt überall". Jedes Spiel
+bekommt eine Antwort. Ein Viertel bekommt echtes Upscaling. Der Rest bekommt
+Treibereinstellungen und räumliche Skalierung, und das ist etwas anderes: ein
+kleineres Bild schärfen kann keine Details zurückholen, die nie gezeichnet
+wurden.
+
+Nachprüfbar mit `node scripts/reality-check.js`.
+
+## Die wichtigste verbleibende Lücke
+
+**Stufe 2 ist an keinem echten Spiel eingetreten.** Sie ist die Idee, auf der
+das ganze Projekt ruht, und von zwölf installierten Spielen fällt keines
+hinein. Sie läuft im Trockenlauf sauber durch, aber ob ein Unreal-Spiel nach
+`r.TemporalAA.Upscaler=1` tatsächlich FSR 4 zeigt, weiß nach wie vor niemand.
+Dafür braucht es ein Unreal-Spiel ohne eigenen Upscaler, und auf diesem
+Rechner ist keines installiert.
+
+## Zustand der Aufgaben aus Phase 6
+
+| Aufgabe | Zustand | Commit |
+|---|---|---|
+| 6.1 Unreal-Plugin-Blindfleck | [v] | `90ad1ff` |
+| 6.2 Die Anwendung startet | [v] | `4356fb1` |
+| 6.3 Wirklichkeitsprüfung als Werkzeug | [v] | `aeaaecc` |
+| 6.4 Die drei offenen Lücken | [v] | `930a1cb` |
+| 6.5 Beigelegte Werkzeuge | [v] | `f6a2c55` |
+| 6.7 Unsichtbares Anti-Cheat | [v] | `6870e0a` |
+| 6.8 Trockenlauf Stufe 1 | [v] | `9681a9e` |
+| 6.9 Sicherung aufräumen, Trockenlauf Stufe 2 | [v] | `826856f` |
+| 6.6 Dieser Nachtrag | – | – |
+
+| | |
+|---|---|
+| Tests | 568 grün (vorher 509, Ausgangsstand 259) |
+| Commits in dieser Phase | 19 |
+| Geänderte Dateien | 20 |
+
+## Drei Werkzeuge, die bleiben
+
+Jedes davon entstand, weil eine Wegwerf-Prüfung etwas gefunden hat, das kein
+Test finden konnte.
+
+- `node scripts/reality-check.js` — was dieser Rechner Spiel für Spiel bekäme.
+- `node scripts/dry-run-install.js` — das echte Archiv in einen künstlichen
+  Ordner installieren, prüfen, zurücknehmen, jede Datei über ihre Prüfsumme.
+- `node scripts/dry-run-engine.js` — dasselbe für Stufe 2, einschließlich der
+  einen Datei, die außerhalb des Spielordners geschrieben wird.
+
+## Was ein Mensch weiterhin tun muss
+
+Unverändert H1 bis H7 aus dem Bericht oben, mit einer Verschiebung. Der
+aussagekräftigste einzelne Test ist nicht mehr Return to Moria, denn das ist
+geklärt. Er ist jetzt:
+
+1. **Ein Unreal-Spiel ohne eigenen Upscaler.** Das ist der einzige Weg, Stufe 2
+   zu bestätigen oder zu widerlegen, und Stufe 2 ist der Grund, warum dieses
+   Projekt behauptet, mehr zu erreichen als ein Treiberschalter.
+2. **Ein Spiel mit DLSS einmal wirklich starten.** Liefert das erste echte
+   `OptiScaler.log` und entscheidet, ob die Muster in `src/core/verify.js`
+   stimmen. Sie sind weiterhin eine Annahme (H6).
+3. **Ein Vulkan-Spiel.** Unverändert offen.
+
+## Was sich über den Lauf selbst gelernt hat
+
+Phase 1 bis 5 hat 509 Tests geschrieben und dabei fünf Fehler nicht gefunden,
+die eine halbe Stunde gegen echte Ordner sofort gezeigt hat. Das liegt nicht
+an zu wenigen Tests. Es liegt daran, dass ein Test prüft, ob der Code das tut,
+was ich beim Schreiben für richtig hielt, und dass genau dort meine Irrtümer
+stecken. Die Platte hatte in jedem einzelnen Fall recht und ich unrecht.
+
+Dreimal lag unterwegs auch meine Diagnose falsch, nicht der Code: `tierLabel`
+hielt ich für kaputt, weil ich den Übersetzungskatalog im Node-Zweig statt im
+Browser-Zweig geladen hatte; bei Fortnite hatte ich `hasAntiCheat` ohne
+Programmpfad geprüft; und `verifyInstall` nimmt Stellungsargumente, kein
+Objekt. Jedes Mal war die erste Vermutung ein Fehler in fremdem Code und jedes
+Mal war es meiner. Das steht hier, weil eine Fehlersuche, die ihre eigenen
+Fehlschlüsse nicht aufschreibt, beim nächsten Mal dieselben macht.

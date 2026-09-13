@@ -10,6 +10,11 @@ every route it has ends in NVIDIA's NGX runtime. This fork adds routes that do.
 been confirmed by running a real game yet. Treat it as a build you help test,
 not as a finished tool.
 
+What *has* been checked against real files: the install places the real
+OptiScaler release, writes the FSR 4 configuration, and comes back out leaving
+the folder byte for byte as it was. See **Checking it yourself** below. What
+nobody has seen is a game rendering a frame with any of it.
+
 ## What it does
 
 It looks at a game and works out the best upscaling it can actually reach, then
@@ -83,6 +88,22 @@ Install, start the game once, then look at the game entry again. The tool reads
 OptiScaler's own log and says which upscaler actually ran. "Installed" and
 "running" are different statements, and only the second one is worth anything.
 
+## Checking it yourself
+
+Three scripts, all read-only about your games and none of which starts one.
+
+```
+node scripts/reality-check.js     what each installed game would actually get
+node scripts/dry-run-install.js   install the real release into a temporary
+                                  folder, check it, take it back out
+node scripts/dry-run-engine.js    the same for tier 2, including the one file
+                                  written outside the game folder
+```
+
+The first is the one worth running before you believe anything here. It says
+how many of your games reach real upscaling rather than how many got an
+answer, because those are different numbers and only the first one matters.
+
 ## Undoing it
 
 **Restore originals** puts the game folder back byte for byte. Tier 2 also
@@ -109,6 +130,12 @@ ergänzt Routen, die es tun.
 **In Arbeit.** Alles hier ist durch Tests abgesichert, aber nichts davon wurde
 bisher mit einem echten Spiel bestätigt. Betrachte es als Bauversion zum
 Mittesten, nicht als fertiges Werkzeug.
+
+Was gegen echte Dateien geprüft ist: die Installation legt das echte
+OptiScaler-Release ab, schreibt die FSR-4-Konfiguration und lässt den Ordner
+beim Zurücknehmen byteweise so zurück, wie er war. Siehe **Selbst nachprüfen**
+weiter unten. Was niemand gesehen hat, ist ein Spiel, das damit ein Bild
+zeichnet.
 
 ## Was es tut
 
@@ -169,6 +196,23 @@ Installieren, das Spiel einmal starten, dann den Eintrag erneut ansehen. Das
 Werkzeug liest OptiScalers eigenes Protokoll und sagt, welcher Upscaler
 tatsächlich lief. „Installiert" und „läuft" sind zwei verschiedene Aussagen,
 und nur die zweite ist etwas wert.
+
+## Selbst nachprüfen
+
+Drei Skripte. Alle lesen deine Spiele nur, keines startet eines.
+
+```
+node scripts/reality-check.js     was jedes installierte Spiel wirklich bekäme
+node scripts/dry-run-install.js   das echte Release in einen temporären Ordner
+                                  installieren, prüfen, zurücknehmen
+node scripts/dry-run-engine.js    dasselbe für Stufe 2, samt der einen Datei
+                                  außerhalb des Spielordners
+```
+
+Das erste ist das, was man laufen lassen sollte, bevor man hier irgendetwas
+glaubt. Es sagt, wie viele deiner Spiele echtes Upscaling erreichen, nicht wie
+viele eine Antwort bekommen. Das sind zwei verschiedene Zahlen, und nur die
+erste zählt.
 
 ## Rückgängig machen
 
