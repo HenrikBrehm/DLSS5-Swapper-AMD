@@ -261,7 +261,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 4 Tests; jeder im AMD-Port geänderte Renderer-Pfad wird einmal ausgeführt. Guard grün.
 - retries: 0
 
-### [ ] 6.3 Wirklichkeitsprüfung als wiederholbares Werkzeug
+### [v] 6.3 Wirklichkeitsprüfung als wiederholbares Werkzeug — commit: aeaaecc
 - depends: 6.1
 - Befund: Die Erkenntnis aus 6.1 entstand durch ein Wegwerf-Skript. Ohne festes Werkzeug ist sie nicht wiederholbar.
 - Ziel: `scripts/reality-check.js` läuft über die installierten Spiele, führt Grafikkarte, Engine, Upscaler-Bestand und Router zusammen und druckt je Spiel die empfohlene Stufe mit Begründung. Reine Diagnose, schreibt nichts, startet nichts. Die Auswertung liegt als reine Funktion in `src/core/reality-check.js`.
