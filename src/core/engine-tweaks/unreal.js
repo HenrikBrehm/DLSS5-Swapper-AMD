@@ -106,7 +106,14 @@ function restore(manifest, gameDir) {
         if (isReadOnly(record.file)) { try { fs.chmodSync(record.file, 0o666); } catch { /* nothing to lift */ } }
         fs.copyFileSync(backup, record.file);
         if (record.wasReadOnly) { try { fs.chmodSync(record.file, 0o444); } catch { /* not ours to set */ } }
+        // And then the copy goes too. It has done its job, and leaving it
+        // behind would put a stale copy of somebody's settings in their game
+        // folder for good - which is not what "restored byte for byte" means.
+        // Found by scripts/dry-run-engine.js; no test had looked.
+        fs.rmSync(backup, { force: true });
       }
+      // Only if it is empty, so a folder holding anything else is left alone.
+      try { fs.rmdirSync(path.dirname(backup)); } catch { /* not empty, or not there */ }
     }
   } finally {
     manifest.engineConfig = null;

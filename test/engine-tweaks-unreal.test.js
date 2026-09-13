@@ -199,3 +199,85 @@ test('restore on a manifest that never touched a config does nothing and does no
   assert.equal(unreal.restore(manifest, gameDir), false);
   assert.equal(unreal.restore({ version: 1 }, gameDir), false);
 });
+
+// ---------------------------------------------------------------------------
+// Task 6.9: the backup copy is not litter.
+//
+// Found by scripts/dry-run-engine.js, which installs tier 2 into a synthetic
+// Unreal game and then takes it back out. The person's own Engine.ini came
+// back byte for byte and none of the four switches survived - and
+// _DLSS5_Backup/engine-config/Engine.ini was still sitting in the game folder
+// afterwards, holding a stale copy of their settings.
+//
+// README-AMD.md says a restore puts the game folder back byte for byte, and
+// task 1.8 pinned exactly what may remain: the spent manifest under a new
+// name and the saved settings profile. This was neither.
+
+test('restore takes the backup copy away with it', (t) => {
+  const gameDir = temp(t, 'unreal-cleanup-game-');
+  const configDir = temp(t, 'unreal-cleanup-config-');
+  fs.writeFileSync(engineIni(configDir), '[/Script/Engine.RendererSettings]\nr.DefaultFeature.MotionBlur=False\n');
+  const manifest = manifestFor(gameDir);
+
+  unreal.apply(manifest, gameDir, engineIn(configDir), {});
+  const backup = path.join(gameDir, unreal.BACKUP_REL);
+  assert.ok(fs.existsSync(backup), 'the backup is made, otherwise there is nothing to restore from');
+
+  unreal.restore(manifest, gameDir);
+  assert.ok(!fs.existsSync(backup), 'and it does not outlive the restore');
+  assert.ok(!fs.existsSync(path.dirname(backup)), 'nor does the folder made to hold it');
+});
+
+test('the settings still come back byte for byte, which is the point of keeping it until then', (t) => {
+  const gameDir = temp(t, 'unreal-cleanup2-game-');
+  const configDir = temp(t, 'unreal-cleanup2-config-');
+  const original = '[/Script/Engine.GameUserSettings]\nbUseVSync=False\nResolutionSizeX=3440\n';
+  fs.writeFileSync(engineIni(configDir), original);
+  const manifest = manifestFor(gameDir);
+
+  unreal.apply(manifest, gameDir, engineIn(configDir), {});
+  assert.match(read(engineIni(configDir)), /r\.TemporalAA\.Upscaler=1/, 'the slot was opened');
+
+  unreal.restore(manifest, gameDir);
+  assert.equal(read(engineIni(configDir)), original, 'and closed again without a trace');
+});
+
+test('a backup that is already gone is not an error', (t) => {
+  // Somebody emptied the backup folder by hand, or a previous restore was
+  // interrupted. Refusing to restore the rest because of that would leave the
+  // engine switches in place, which is the worse outcome.
+  const gameDir = temp(t, 'unreal-cleanup3-game-');
+  const configDir = temp(t, 'unreal-cleanup3-config-');
+  fs.writeFileSync(engineIni(configDir), 'original\n');
+  const manifest = manifestFor(gameDir);
+
+  unreal.apply(manifest, gameDir, engineIn(configDir), {});
+  fs.rmSync(path.join(gameDir, '_DLSS5_Backup', 'engine-config'), { recursive: true, force: true });
+
+  assert.equal(unreal.restore(manifest, gameDir), true, 'it still reports that it ran');
+  assert.equal(manifest.engineConfig, null, 'and still clears the record');
+});
+
+test('a created file leaves no backup folder behind either', (t) => {
+  // Nothing was backed up, because there was nothing there. The folder must
+  // not appear anyway.
+  const gameDir = temp(t, 'unreal-cleanup4-game-');
+  const configDir = path.join(temp(t, 'unreal-cleanup4-config-'), 'Saved', 'Config', 'Windows');
+  const manifest = manifestFor(gameDir);
+
+  unreal.apply(manifest, gameDir, engineIn(configDir), {});
+  assert.ok(fs.existsSync(engineIni(configDir)), 'the file was created');
+
+  unreal.restore(manifest, gameDir);
+  assert.ok(!fs.existsSync(engineIni(configDir)), 'and removed again');
+  assert.ok(!fs.existsSync(path.join(gameDir, '_DLSS5_Backup', 'engine-config')));
+});
+
+test('the tier 2 dry run checks for exactly the switches the plan writes', (t) => {
+  // scripts/dry-run-engine.js reports which switches landed and which came
+  // back out. A list that drifted from the plan would quietly stop checking
+  // one of them and still print a clean result.
+  const { SWITCHES } = require('../scripts/dry-run-engine');
+  const planned = unreal.plan(engineIn(temp(t)), {}).map((entry) => entry.key);
+  assert.deepEqual([...SWITCHES].sort(), planned.sort());
+});
