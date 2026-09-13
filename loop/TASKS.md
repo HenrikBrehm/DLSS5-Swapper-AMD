@@ -310,7 +310,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: >= 4 neue Tests, darunter der Nachweis, dass die Einstellungen weiterhin byteweise zurueckkommen und dass eine fehlende Sicherung kein Fehler ist. Der Stufe-2-Trockenlauf endet mit Ausgang 0. Guard gruen.
 - retries: 0
 
-### [ ] 6.6 Bericht fortschreiben
+### [v] 6.6 Bericht fortschreiben — commit: d2077e2
 - depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8, 6.9
 - Ziel: `loop/REPORT.md` bekommt einen Abschnitt über Phase 6: was der erste echte Durchlauf widerlegt hat, was jetzt gilt, und was weiterhin nur durch ein laufendes Spiel zu klären ist.
 - Dateien: `loop/REPORT.md`, `README-AMD.md` falls eine Aussage darin nicht mehr stimmt.
