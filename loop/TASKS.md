@@ -302,8 +302,16 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: >= 5 Tests fuer die Urteilsfunktion, ohne Netz und ohne Download. Guard gruen.
 - retries: 0
 
+### [v] 6.9 Die Sicherung der Engine-Konfiguration nach der Wiederherstellung aufraeumen — commit: 826856f
+- depends: 6.8
+- Befund: Der Stufe-2-Trockenlauf zeigt, dass `_DLSS5_Backup/engine-config/Engine.ini` nach einer vollstaendigen Wiederherstellung im Spielordner liegen bleibt. Die Einstellungen des Menschen kommen korrekt und byteweise zurueck, und keiner der vier Schalter bleibt stehen; aber die Sicherungskopie tut es. Das `README-AMD.md` verspricht ausdruecklich, dass der Spielordner byteweise zurueckgesetzt wird, und Aufgabe 1.8 hat festgelegt, dass nach einer Wiederherstellung ausschliesslich die umbenannte Manifest-Kopie und die gespeicherte Einstellungsdatei liegen bleiben duerfen.
+- Ziel: `unreal.restore` entfernt die Sicherung, nachdem sie zurueckgespielt wurde, und raeumt den leeren Ordner mit ab. Die Wiederherstellung selbst darf dadurch nicht scheitern, wenn die Sicherung schon weg ist.
+- Dateien: `src/core/engine-tweaks/unreal.js`, zugehoerige Tests erweitern.
+- Akzeptanz: >= 4 neue Tests, darunter der Nachweis, dass die Einstellungen weiterhin byteweise zurueckkommen und dass eine fehlende Sicherung kein Fehler ist. Der Stufe-2-Trockenlauf endet mit Ausgang 0. Guard gruen.
+- retries: 0
+
 ### [ ] 6.6 Bericht fortschreiben
-- depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8
+- depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8, 6.9
 - Ziel: `loop/REPORT.md` bekommt einen Abschnitt über Phase 6: was der erste echte Durchlauf widerlegt hat, was jetzt gilt, und was weiterhin nur durch ein laufendes Spiel zu klären ist.
 - Dateien: `loop/REPORT.md`, `README-AMD.md` falls eine Aussage darin nicht mehr stimmt.
 - Akzeptanz: jede Aufgaben-ID aus Phase 6 kommt mit Endzustand vor. Guard grün. Danach `ScheduleWakeup(stop: true)`.
