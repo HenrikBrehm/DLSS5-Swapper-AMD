@@ -319,6 +319,34 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 
 ---
 
+## Phase 7 - Was beim ersten Benutzen herauskam
+
+### [v] 7.1 Die Naht zwischen Oberflaeche und AMD-Installer — commit: 10789b3
+- depends: 6.6
+- Befund: Der erste Druck auf Installieren endete mit "The payload is missing or incomplete". Der Payload ist die NVIDIA-Haelfte; die AMD-Routen fassen ihn nie an. Dahinter lagen fuenf weitere Fehler in denselben zwanzig Zeilen von `main.js`, alle unsichtbar fuer jeden Test, der ein Modul fuer sich prueft: `routesFor` wurde ohne Adapter aufgerufen, weshalb eine AMD-Route nie waehlbar war und still durch eine NVIDIA-Route ersetzt wurde; `optiRoot` wurde nur fuer Stufe 1 geholt, Stufe 2 stand ohne da; und dem Installer fehlten Adapter, Upscaler-Bestand und Engine, weshalb er FSR 3.1 statt FSR 4 aufgeloest, die DXGI-Vortaeuschung nicht geschrieben und bei Stufe 2 geworfen haette.
+- Ziel: Die Payload-Pruefung wird routenabhaengig und wandert hinter die Routenwahl. Der Adapter geht an `routesFor`. Beide injizierenden AMD-Routen holen den Payload. Adapter, Bestand und Engine gehen an `backends.install`.
+- Dateien: `main.js`, neu `test/install-ipc-amd.test.js`.
+- Akzeptanz: >= 8 Tests, die den Handler selbst fahren, darunter der Nachweis, dass eine NVIDIA-Maschine ohne Payload weiterhin verweigert. Guard gruen.
+- retries: 0
+
+### [ ] 7.2 Knopfbeschriftung fuer die AMD-Routen
+- depends: 7.1
+- Befund: Der Installationsknopf heisst bei jeder AMD-Route "DLSS 5 installieren", obwohl FSR 4 installiert wird und nichts von NVIDIA.
+- Ziel: Eigene Beschriftung fuer die injizierenden AMD-Routen und fuer die gefuehrten Routen, in allen 38 Sprachen.
+- Dateien: `src/renderer/renderer.js`, `src/shared/feature-i18n.js`, `test/renderer-smoke.test.js` erweitern.
+- Akzeptanz: >= 3 Tests; die NVIDIA-Beschriftungen bleiben woertlich unveraendert. Guard gruen.
+- retries: 0
+
+### [ ] 7.3 Stufe-1-Text sagt, welchen Upscaler das Spiel mitbringt
+- depends: 7.1
+- Befund: "Dieses Spiel bringt bereits einen Upscaler mit" liest sich identisch, ob das Spiel DLSS mitbringt, das auf einer Radeon nichts nuetzt, oder FSR 3.1, das bereits laeuft und das der Treiber ohnehin selbst anhebt. In einem der beiden Faelle ist die Installation ueberfluessig.
+- Ziel: Zwei getrennte Begruendungen, je nachdem ob der mitgebrachte Upscaler auf dieser Karte nutzbar ist, in allen 38 Sprachen.
+- Dateien: `src/core/router.js`, `src/shared/feature-i18n.js`, `test/router.test.js` erweitern.
+- Akzeptanz: >= 4 Tests. Guard gruen.
+- retries: 0
+
+---
+
 ## Mensch-Aufgaben (Loop überspringt, niemals anfassen)
 
 ### [h] H1 Spikes S1–S8 auf dem PC durchführen und in `loop/SPIKES.md` eintragen
