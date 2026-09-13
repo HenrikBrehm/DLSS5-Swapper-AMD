@@ -553,9 +553,15 @@ ipcMain.handle('save-diagnostics', async (event, dir, activity) => {
   const window = BrowserWindow.fromWebContents(event.sender);
   const userData = app.getPath('userData');
   let exeDir = null;
+  // The engine rides along on the scanned target now, so the report can name
+  // it without a second detection pass.
+  let engine = null;
   try {
     const scan = await scanGame(dir);
-    if (scan.chosen) exeDir = path.dirname(scan.chosen.path);
+    if (scan.chosen) {
+      exeDir = path.dirname(scan.chosen.path);
+      engine = scan.chosen.engine || null;
+    }
   } catch { /* the folder alone is still worth reporting */ }
 
   const found = diagnostics.sources({ gameDir: dir, exeDir, userData });
@@ -571,9 +577,16 @@ ipcMain.handle('save-diagnostics', async (event, dir, activity) => {
   if (consent.response !== 1) return { ok: false, cancelled: true };
 
   let gpu = null;
-  try { gpu = guards.driverNames(await guards.gpuInfo()); } catch { /* advice only */ }
+  // The rows themselves, not just their names. diagnostics turns them into the
+  // Adrenalin version and the FSR 4 library, which is the half of an AMD bug
+  // report that nobody can supply from memory.
+  let gpuRows = null;
+  try {
+    gpuRows = await guards.gpuInfo();
+    gpu = guards.driverNames(gpuRows);
+  } catch { /* advice only */ }
   const { text } = diagnostics.report({
-    gameDir: dir, exeDir, userData,
+    gameDir: dir, exeDir, userData, gpuRows, engine,
     facts: {
       app: app.getVersion(), electron: process.versions.electron, platform: `${process.platform} ${os.release()}`,
       gpu, game: path.basename(dir), 'game folder': dir, 'executable folder': exeDir,

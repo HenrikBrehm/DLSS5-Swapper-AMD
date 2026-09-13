@@ -131,8 +131,11 @@ test('emptyUpscalers is a fresh object every time, so callers cannot poison it',
   const one = emptyUpscalers();
   one.dlss = true;
   assert.equal(emptyUpscalers().dlss, false);
+  // `fsrfg` joined in task 6.4. fg-plan.js had been branching on it since
+  // task 4.1 while no pattern could ever set it, so the frame-generation
+  // planner always believed the game generated none.
   assert.deepEqual(Object.keys(emptyUpscalers()).sort(),
-    ['any', 'dlss', 'dlssg', 'fsr2', 'fsr31', 'fsr31Signed', 'streamline', 'xess']);
+    ['any', 'dlss', 'dlssg', 'fsr2', 'fsr31', 'fsr31Signed', 'fsrfg', 'streamline', 'xess']);
 });
 
 test('a scanned game carries the inventory on every candidate it offers', async (t) => {

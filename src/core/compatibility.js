@@ -25,42 +25,12 @@ function managedModRoot(gameDir, exePath) {
   }
   return null;
 }
-// Anti-cheat that leaves nothing in the game folder to find.
-//
-// Ricochet, Vanguard, mhyprot and Byfron run in the kernel or inside the
-// client and are installed separately, so a file scan of the game folder
-// correctly reports nothing and the game looks safe to inject into. It is not.
-// Found by running scripts/reality-check.js against a real library, where Call
-// of Duty came back as tier 1.
-//
-// This is the one place in the codebase where over-detecting is the right
-// error. A wrong match costs somebody a worse tier; a missed one costs them
-// their account. Each pattern is anchored on the full title so that an
-// ordinary game cannot fall into it: "Duty Calls" is not Call of Duty, and
-// "Valor" is not Valorant.
-const INVISIBLE_ANTI_CHEAT = Object.freeze([
-  /arc[ _-]?raiders/i,
-  /call[ _-]?of[ _-]?duty/i,
-  /\bmodern[ _-]?warfare\b/i,
-  /\bblack[ _-]?ops\b/i,
-  /\bwarzone\b/i,
-  /\bvalorant\b/i,
-  /\bleague[ _-]?of[ _-]?legends\b/i,
-  /\bgenshin[ _-]?impact\b/i,
-  /\bhonkai\b/i,
-  /\bzenless[ _-]?zone[ _-]?zero\b/i,
-  /\bmarvel[ _-]?rivals\b/i,
-  /\broblox\b/i,
-  // Ships EasyAntiCheat on disk and is found that way too. Named here as well
-  // so that the answer does not depend on which paths a caller passes.
-  /\bfortnite\b/i
-]);
+// Anti-cheat detection lives in install-guards, because scan.js needs it and
+// cannot require this file: compatibility already requires scan, and the cycle
+// would be real. Re-exported here so that every existing caller and every test
+// stub that names compatibility.hasAntiCheat keeps working unchanged.
+const { hasAntiCheat, INVISIBLE_ANTI_CHEAT } = guards;
 
-function hasAntiCheat(gameDir, exePath) {
-  const dirs = [gameDir, ...(exePath ? [path.dirname(exePath)] : [])].filter(Boolean);
-  return dirs.some(dir => INVISIBLE_ANTI_CHEAT.some(pattern => pattern.test(dir))) ||
-    dirs.some(dir => guards.antiCheatPresent(dir));
-}
 function targetIssue(gameDir, exePath) {
   // Anti-cheat is a user-acknowledged risk, not a compatibility hard block.
   // Keep independent mod-manager/file-conflict protections in place.

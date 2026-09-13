@@ -16,7 +16,6 @@ const path = require('node:path');
 const scan = require('../src/core/scan');
 const library = require('../src/library');
 const gpuDetect = require('../src/core/gpu-detect');
-const compatibility = require('../src/core/compatibility');
 const { detectEngine } = require('../src/core/engine-detect');
 const { assess, render, summarise } = require('../src/core/reality-check');
 
@@ -48,15 +47,12 @@ async function main() {
     let scanned = null;
     try { scanned = await scan.scanGame(dir); } catch { scanned = null; }
     const target = scanned && scanned.chosen;
-    const engine = detectEngine(dir, target ? target.path : null);
-    // scanGame does not put anti-cheat on the target; main.js adds it on its
-    // own path. Without this the report would recommend injecting a DLL into
-    // a game that bans people for it, which is the one mistake here that
-    // costs the reader something they cannot get back.
-    const enriched = target
-      ? { ...scanned, chosen: { ...target, antiCheat: compatibility.hasAntiCheat(dir, target.path) } }
-      : scanned;
-    rows.push(assess({ name, dir, scan: enriched, engine, gpu }));
+    // Since task 6.4 the engine and the anti-cheat verdict travel on the
+    // target itself, so this reads exactly what the application reads. Before
+    // that they did not, and this script was one step from recommending an
+    // injection into a game that bans people for it.
+    const engine = (target && target.engine) || detectEngine(dir, target ? target.path : null);
+    rows.push(assess({ name, dir, scan: scanned, engine, gpu }));
   }
 
   if (json) {

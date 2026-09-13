@@ -10,6 +10,12 @@ const emulators = require('./emulators');
 const crypto = require('crypto');
 const feederRelease = require('./feeder-release');
 const { safePath } = require('./file-journal');
+// Both are leaves: engine-detect reads the filesystem only, and install-guards
+// reaches no further than gpu-detect. Neither requires this file, so neither
+// creates a cycle. compatibility.js does require it, which is why anti-cheat
+// detection was moved into install-guards rather than reached for there.
+const { detectEngine } = require('./engine-detect');
+const guards = require('./install-guards');
 
 const SKIP_DIRS = new Set([
   '_dlss5_backup', 'reshade-shaders', 'host64', 'node_modules', '.git',
@@ -46,6 +52,11 @@ const UPSCALER_PATTERNS = Object.freeze({
   streamline: [/^sl\.interposer\.dll$/i],
   fsr2: [/^ffx_fsr2_api(?:_dx12|_vk)?_x64\.dll$/i],
   fsr31: [/^amd_fidelityfx_(?:dx12|vk)\.dll$/i, /^amd_fidelityfx_upscaler_dx12\.dll$/i, /^ffx_fsr3upscaler_x64\.dll$/i],
+  // Frame generation, listed for the same reason as dlssg and left out of
+  // `any` for the same reason: fg-plan.js branches on it to decide whether
+  // the game already generates frames, and before this nothing could ever
+  // set it, so the answer was always "it does not".
+  fsrfg: [/^amd_fidelityfx_framegeneration_(?:dx12|vk)\.dll$/i, /^ffx_frameinterpolation_x64\.dll$/i],
   xess: [/^libxess(?:_dx11)?\.dll$/i]
 });
 const UPSCALER_INPUTS = Object.freeze(['dlss', 'fsr2', 'fsr31', 'xess']);
@@ -86,7 +97,7 @@ function pluginRoots(gameDir) {
 }
 
 function emptyUpscalers() {
-  return { dlss: false, dlssg: false, streamline: false, fsr2: false, fsr31: false, fsr31Signed: false, xess: false, any: false };
+  return { dlss: false, dlssg: false, streamline: false, fsr2: false, fsr31: false, fsr31Signed: false, fsrfg: false, xess: false, any: false };
 }
 
 // Only a signed FSR 3.1 runtime can be swapped for FSR 4 by the Radeon driver
@@ -743,6 +754,23 @@ async function scanGame(gameDir) {
       }));
     }
     candidate.upscalers = { ...inventories.get(key) };
+  }
+
+  // The engine and the anti-cheat verdict travel on the target too.
+  //
+  // They used not to: main.js added both on its own path, so the application
+  // was right and every other caller of scanGame silently was not. That is
+  // the worst shape a gap can have, because the one place anybody would look
+  // is the one place it works. scripts/reality-check.js walked straight into
+  // it and was one step from recommending an injection into a game with
+  // anti-cheat.
+  const engine = detectEngine(gameDir, chosen ? chosen.path : null);
+  const antiCheatByDir = new Map();
+  for (const candidate of exeCandidates) {
+    const key = path.dirname(candidate.path).toLowerCase();
+    if (!antiCheatByDir.has(key)) antiCheatByDir.set(key, guards.hasAntiCheat(gameDir, candidate.path));
+    candidate.engine = engine;
+    candidate.antiCheat = antiCheatByDir.get(key);
   }
 
   let reshade = chosen ? inspectReShade(path.dirname(chosen.path)) : inspectReShade(gameDir);
