@@ -329,7 +329,15 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: >= 8 Tests, die den Handler selbst fahren, darunter der Nachweis, dass eine NVIDIA-Maschine ohne Payload weiterhin verweigert. Guard gruen.
 - retries: 0
 
-### [ ] 7.2 Knopfbeschriftung fuer die AMD-Routen
+### [v] 7.2 Der AMD-Bestaetigungsdialog uebergibt Electron eine gueltige Form — commit: 3032c95
+- depends: 7.1
+- Befund: Nach 7.1 kam die Installation bis zum Bestaetigungsdialog und starb dort mit "Detail must be a string". `detail` wurde als Array gebaut und nie zusammengefuegt; der NVIDIA-Dialog, von dem es abgeschrieben ist, fuegt mit einer Leerzeile zusammen, die Kopie hat den letzten Aufruf verloren. Vier bestehende Tests pruefen `detail` als Array und haben damit genau die eine Form festgehalten, die nicht funktionieren kann. Ein Test, der dem Fehler zustimmt, ist schlimmer als kein Test, weil er als Beleg gelesen wird.
+- Ziel: Zusammenfuegen wie beim NVIDIA-Dialog. Die vier Tests auf die String-Form berichtigen, nicht abschwaechen. Zusaetzlich ein Test, der jedes Feld gegen die Typen prueft, die Electron verlangt. Die Dialog-Attrappe im IPC-Test prueft dieselben Typen, damit eine Attrappe nie wieder grosszuegiger ist als die Wirklichkeit.
+- Dateien: `main.js`, `test/amd-dialog.test.js`, `test/install-ipc-amd.test.js`.
+- Akzeptanz: >= 3 neue Tests. Guard gruen.
+- retries: 0
+
+### [ ] 7.4 Knopfbeschriftung fuer die AMD-Routen
 - depends: 7.1
 - Befund: Der Installationsknopf heisst bei jeder AMD-Route "DLSS 5 installieren", obwohl FSR 4 installiert wird und nichts von NVIDIA.
 - Ziel: Eigene Beschriftung fuer die injizierenden AMD-Routen und fuer die gefuehrten Routen, in allen 38 Sprachen.
