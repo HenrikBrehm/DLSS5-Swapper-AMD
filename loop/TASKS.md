@@ -277,7 +277,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 3 neue Tests. Das Verhalten der NVIDIA-Routen bleibt unverändert. Guard grün.
 - retries: 0
 
-### [ ] 6.5 Beigelegte Werkzeuge nicht als Spiel wählen
+### [v] 6.5 Beigelegte Werkzeuge nicht als Spiel wählen — commit: f6a2c55
 - depends: –
 - Befund: Bei Forts wählt der Scan `ffmpeg.exe` als Programmdatei des Spiels, obwohl `Forts.exe` danebenliegt.
 - Ziel: `NOT_A_GAME` um beigelegte Medien- und Skriptwerkzeuge erweitern. Sehr eng halten, damit kein echtes Spiel ausgeschlossen wird.
