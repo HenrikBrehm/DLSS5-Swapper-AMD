@@ -117,20 +117,39 @@ function vendorOf(rows) {
 // wrong to withhold the AMD routes from it on that basis.
 function amdRow(rows) { return (rows || []).find(row => row && row.vendor === 'amd') || null; }
 function amdFsr4Ready(rows) { const row = amdRow(rows); return Boolean(row && row.fsr4Capable); }
+// Names an anti-cheat leaves in a game folder. Generic "anticheat" is in
+// there on purpose: it catches AntiCheatExpert and whatever is named next,
+// and the cost of a wrong match is one worse tier while the cost of a miss is
+// somebody's account.
+const ANTI_CHEAT_FILE = /easyanticheat|battleye|(?:^|[-_])(?:eac|be)launcher|eaanticheat|anticheat/i;
+
+// The standard Unreal layout puts it at <Project>\Binaries\Win64\EasyAntiCheat,
+// which is one level below where this search used to stop. Fortnite is exactly
+// that shape, and was found only when a caller happened to pass the executable
+// path as a second starting point.
+const ANTI_CHEAT_DEPTH = 3;
+
+// Asset trees hold tens of thousands of files and never an anti-cheat
+// launcher. Without skipping them the deeper search spends its whole budget on
+// textures and then answers "no anti-cheat", which is the dangerous direction
+// to be wrong in - worse than not having looked deeper at all.
+const ANTI_CHEAT_SKIP = /^(?:content|paks|data|assets|textures|meshes|materials|audio|sound|music|movies|video|shaders|shadercache|cache|logs|saved|screenshots|localization|locale|_dlss5_backup|node_modules|\.git)$/i;
+const ANTI_CHEAT_BUDGET = 6000;
+
 function antiCheatPresent(gameDir) {
   const queue = [[gameDir, 0]];
   let examined = 0;
-  while (queue.length && examined < 2000) {
+  while (queue.length && examined < ANTI_CHEAT_BUDGET) {
     const [dir, depth] = queue.shift();
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
     for (const entry of entries) {
-      if (examined >= 2000) break;
+      if (examined >= ANTI_CHEAT_BUDGET) break;
       examined++;
-      if (/easyanticheat|battleye|(?:^|[-_])(?:eac|be)launcher|eaanticheat/i.test(entry.name)) return true;
-      if (entry.isDirectory() && depth < 2 && !/^_DLSS5_Backup$|^node_modules$/i.test(entry.name)) queue.push([path.join(dir, entry.name), depth + 1]);
+      if (ANTI_CHEAT_FILE.test(entry.name)) return true;
+      if (entry.isDirectory() && depth < ANTI_CHEAT_DEPTH && !ANTI_CHEAT_SKIP.test(entry.name)) queue.push([path.join(dir, entry.name), depth + 1]);
     }
   }
   return false;
 }
-module.exports = { assertGameClosed, executableLocked, matchingProcesses, gpuInfo, gpuSupported, gpuModelSupported, driverSupported, driverNeuralFault, driverNames, antiCheatPresent, vendorOf, amdRow, amdFsr4Ready };
+module.exports = { assertGameClosed, executableLocked, matchingProcesses, gpuInfo, gpuSupported, gpuModelSupported, driverSupported, driverNeuralFault, driverNames, antiCheatPresent, vendorOf, amdRow, amdFsr4Ready, ANTI_CHEAT_FILE, ANTI_CHEAT_SKIP, ANTI_CHEAT_DEPTH };
