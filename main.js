@@ -34,6 +34,11 @@ const optiscaler = require('./src/core/optiscaler');
 // install-routes-amd.test.js fails if the two ever drift apart.
 const GUIDED_ROUTES = ['amd-driver', 'spatial'];
 const AMD_INJECTING_ROUTES = ['amd-optiscaler', 'engine-upscale'];
+// Every route that does not want the bundled NVIDIA payload. The injecting
+// ones fetch OptiScaler themselves and check its hash; the guided ones copy
+// nothing at all. Refusing these for a missing payload told people to build
+// something they had no use for, and was the first thing anybody hit.
+const AMD_ROUTES = [...AMD_INJECTING_ROUTES, ...GUIDED_ROUTES];
 const verify = require('./src/core/verify');
 const router = require('./src/core/router');
 const engineDetect = require('./src/core/engine-detect');
@@ -1695,8 +1700,9 @@ async function exclusiveMutation(work) {
 }
 
 ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) => exclusiveMutation(async () => {
+  // Whether the payload is needed depends on the route, so the verdict waits
+  // until the route is known, a few lines below.
   const p = payload();
-  if (!p) return { ok: false, ...payloadMissing() };
   const scan = await scanGame(dir);
   if (!scan.chosen) return { ok: false, message: 'No game executable found' };
 
@@ -1708,7 +1714,13 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
   compatibility.assertSafeTarget(dir, target.path);
   target.hasNativeDlss = installRoutes.nativeDlssPresent(scan);
   const api = target.api;
-  const availableRoutes = installRoutes.routesFor(target, api);
+  // With the adapter, because without it this takes the NVIDIA branch and the
+  // AMD routes are not among the ones an install may choose. Asking for
+  // amd-optiscaler then fell through to a NVIDIA route and installed that
+  // instead, silently.
+  let amdAdapter = null;
+  try { amdAdapter = guards.amdRow(await guards.gpuInfo()); } catch { amdAdapter = null; }
+  const availableRoutes = installRoutes.routesFor(target, api, amdAdapter);
   if (requestedRoute === 'optiscaler' && !availableRoutes.includes('optiscaler')) {
     return { ok: false, code: installRoutes.optiReason(target, api) || 'optiUnsupported' };
   }
@@ -1716,6 +1728,8 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
   const recommendedRoute = installRoutes.recommendedRoute(scan, target);
   const route = availableRoutes.includes(requestedRoute) ? requestedRoute
     : (availableRoutes.includes(recommendedRoute) ? recommendedRoute : availableRoutes[0]);
+  // Now the route is known, so the payload question can be answered honestly.
+  if (!p && !AMD_ROUTES.includes(route)) return { ok: false, ...payloadMissing() };
 
   // ReShade Setup is a Windows executable. On Linux, support Windows games
   // launched with Steam Play by using their existing Proton prefix; native
@@ -1774,7 +1788,10 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
   // The AMD twin of the dialog below. Same shape, different facts: nothing
   // here mentions Blackwell or a neural-rendering model, because neither
   // exists on a Radeon.
-  if (route === 'amd-optiscaler') {
+  // Both injecting AMD routes, not just tier 1. Tier 2 installs the same
+  // OptiScaler and then opens the engine's slot on top, so fetching the
+  // payload for one and not the other left tier 2 with nothing to install.
+  if (AMD_INJECTING_ROUTES.includes(route)) {
     optiscaler.checkConflicts(dir, target.path, old, api);
     if (api === 'vulkan' && await vulkanLayer.existing(vulkanLayer.defaultRunner)) return { ok: false, code: 'errOptiVulkanLayer' };
     const gpu = await guards.gpuInfo();
@@ -1915,10 +1932,20 @@ ipcMain.handle('install', (event, dir, exePath, requestedRoute, requestedApi) =>
       route,
       antiCheatAcknowledged,
       emulator: target.emulator,
-      source: p.source,
+      // Three facts the AMD installer cannot work without, and none of which
+      // used to reach it. The adapter decides FSR 4 against FSR 3.1. The
+      // inventory decides whether the DXGI spoofing is written, without which
+      // a game that only ships DLSS goes on hiding the option on a Radeon.
+      // The engine is what tier 2 edits.
+      gpu: amdAdapter,
+      upscalers: target.upscalers || detected.upscalers || null,
+      engine: engineDetect.detectEngine(dir, target.path),
+      // Absent for the AMD routes, which is allowed now that the gate above
+      // knows the difference.
+      source: p ? p.source : null,
       optiRoot,
       companions,
-      reshadeSetup: p.reshadeSetup,
+      reshadeSetup: p ? p.reshadeSetup : null,
       setupRunner: proton ? createSetupRunner(proton) : undefined,
       vulkanLayerTarget: path.join(app.getPath('userData'), 'reshade-vulkan'),
       installReShade: true,
