@@ -294,8 +294,16 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: >= 5 neue Tests, darunter die Unreal-Form ohne Programmpfad und der Nachweis, dass ein harmloses Spiel weiterhin nicht als Anti-Cheat gilt. Guard gruen.
 - retries: 0
 
+### [v] 6.8 Trockenlauf: echtes Archiv, echte Installation, echte Wiederherstellung — commit: 9681a9e
+- depends: 6.1
+- Befund: `test/apply-amd-optiscaler.test.js` installiert und stellt wieder her, aber gegen einen in Millisekunden gebauten Payload: die Namen und die INI sind echt, die DLLs sind vier Kilobyte Nichts. Die Kette vom Archiv auf GitHub bis zu Dateien in einem Spielordner war also nie am Stueck gelaufen.
+- Ziel: `scripts/dry-run-install.js` legt einen kuenstlichen Spielordner an, laedt das echte Release, entpackt es mit dem echten Entpacker, installiert, prueft, stellt wieder her und vergleicht jede Datei ueber ihre Pruefsumme. Kein Spiel wird angefasst, nichts wird gestartet.
+- Dateien: neu `scripts/dry-run-install.js`, neu `test/dry-run-install.test.js`.
+- Akzeptanz: >= 5 Tests fuer die Urteilsfunktion, ohne Netz und ohne Download. Guard gruen.
+- retries: 0
+
 ### [ ] 6.6 Bericht fortschreiben
-- depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7
+- depends: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8
 - Ziel: `loop/REPORT.md` bekommt einen Abschnitt über Phase 6: was der erste echte Durchlauf widerlegt hat, was jetzt gilt, und was weiterhin nur durch ein laufendes Spiel zu klären ist.
 - Dateien: `loop/REPORT.md`, `README-AMD.md` falls eine Aussage darin nicht mehr stimmt.
 - Akzeptanz: jede Aufgaben-ID aus Phase 6 kommt mit Endzustand vor. Guard grün. Danach `ScheduleWakeup(stop: true)`.
