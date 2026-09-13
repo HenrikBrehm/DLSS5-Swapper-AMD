@@ -253,7 +253,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 6 neue Tests, darunter die echte Moria-Verzeichnisform und der Nachweis, dass das Zwei-Ebenen-Fenster außerhalb der Plugin-Wurzeln unverändert gilt. Guard grün.
 - retries: 0
 
-### [ ] 6.2 Nachweis, dass die Anwendung überhaupt startet
+### [v] 6.2 Nachweis, dass die Anwendung überhaupt startet — commit: 4356fb1
 - depends: –
 - Befund: Die Oberfläche wurde in 24 Aufgaben verändert und nie geöffnet. Ein Laufzeitfehler im Renderer wäre bisher von keinem Test bemerkt worden.
 - Ziel: Ein Test lädt `src/renderer/*.js` in einer DOM-Attrappe und ruft die Einstiegspunkte auf, die der AMD-Port angefasst hat. Kein echtes Electron-Fenster, kein Spielstart.
