@@ -239,6 +239,61 @@ Das Werkzeug ist ein **Weichensteller**. Es erkennt pro Spiel die Engine und die
 
 ---
 
+## Phase 6 — Was der erste echte Durchlauf gefunden hat
+
+Diese Phase entstand nicht am Schreibtisch, sondern beim ersten Lauf der
+fertigen Kette gegen die tatsächlich installierten Spiele des Referenz-PCs.
+Sie korrigiert, was dieser Lauf widerlegt hat.
+
+### [v] 6.1 Unreal-Plugin-Blindfleck schließen — commit: 90ad1ff
+- depends: 1.3
+- Befund: Return to Moria führt `Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll`. Die Programmdatei liegt in `Moria/Binaries/Win64`. Zwischen beiden liegen weit mehr als die zwei Ebenen, die `detectUpscalers` absucht, also meldete der Scan „kein Upscaler" und der Router Stufe 2 statt Stufe 1. Genau dieser Widerspruch stand als offener Punkt im Abschlussbericht; die Kompatibilitätsliste hatte recht und der Scan unrecht.
+- Ziel: `detectUpscalers` durchsucht zusätzlich zu den zwei Ebenen um die Programmdatei die Unreal-Plugin-Bäume. Das Fenster um die Programmdatei bleibt unverändert bei zwei Ebenen; die Plugin-Wurzeln kommen als ausdrückliche Option dazu, damit kein beiliegendes Werkzeug tiefer im Baum als spieleigen gelesen wird.
+- Dateien: `src/core/scan.js`, `test/scan-upscalers.test.js` erweitern.
+- Akzeptanz: ≥ 6 neue Tests, darunter die echte Moria-Verzeichnisform und der Nachweis, dass das Zwei-Ebenen-Fenster außerhalb der Plugin-Wurzeln unverändert gilt. Guard grün.
+- retries: 0
+
+### [ ] 6.2 Nachweis, dass die Anwendung überhaupt startet
+- depends: –
+- Befund: Die Oberfläche wurde in 24 Aufgaben verändert und nie geöffnet. Ein Laufzeitfehler im Renderer wäre bisher von keinem Test bemerkt worden.
+- Ziel: Ein Test lädt `src/renderer/*.js` in einer DOM-Attrappe und ruft die Einstiegspunkte auf, die der AMD-Port angefasst hat. Kein echtes Electron-Fenster, kein Spielstart.
+- Dateien: neu `test/renderer-smoke.test.js`, nur lesend auf `src/renderer/**` und `main.js`.
+- Akzeptanz: ≥ 4 Tests; jeder im AMD-Port geänderte Renderer-Pfad wird einmal ausgeführt. Guard grün.
+- retries: 0
+
+### [ ] 6.3 Wirklichkeitsprüfung als wiederholbares Werkzeug
+- depends: 6.1
+- Befund: Die Erkenntnis aus 6.1 entstand durch ein Wegwerf-Skript. Ohne festes Werkzeug ist sie nicht wiederholbar.
+- Ziel: `scripts/reality-check.js` läuft über die installierten Spiele, führt Grafikkarte, Engine, Upscaler-Bestand und Router zusammen und druckt je Spiel die empfohlene Stufe mit Begründung. Reine Diagnose, schreibt nichts, startet nichts. Die Auswertung liegt als reine Funktion in `src/core/reality-check.js`.
+- Dateien: neu `scripts/reality-check.js`, neu `src/core/reality-check.js`, neu `test/reality-check.test.js`.
+- Akzeptanz: ≥ 5 Tests gegen erfundene Spielordner; das Skript selbst greift im Test nie auf echte Ordner zu. Guard grün.
+- retries: 0
+
+### [ ] 6.4 Die drei offenen Lücken aus dem Abschlussbericht schließen
+- depends: 6.1
+- Befund: Der Bericht nennt drei bewusst offen gelassene Lücken, weil keine Aufgabe die betroffenen Dateien besaß.
+- Ziel: `scan.js` reicht `engine`, `antiCheat` und `upscalers` an jedes Ziel durch; `main.js` übergibt Adapterzeilen und Engine an `diagnostics.report()`.
+- Dateien: `src/core/scan.js`, `main.js`, zugehörige Tests erweitern.
+- Akzeptanz: ≥ 3 neue Tests. Das Verhalten der NVIDIA-Routen bleibt unverändert. Guard grün.
+- retries: 0
+
+### [ ] 6.5 Beigelegte Werkzeuge nicht als Spiel wählen
+- depends: –
+- Befund: Bei Forts wählt der Scan `ffmpeg.exe` als Programmdatei des Spiels, obwohl `Forts.exe` danebenliegt.
+- Ziel: `NOT_A_GAME` um beigelegte Medien- und Skriptwerkzeuge erweitern. Sehr eng halten, damit kein echtes Spiel ausgeschlossen wird.
+- Dateien: `src/core/scan.js`, `test/scan.test.js` erweitern.
+- Akzeptanz: ≥ 2 neue Tests, darunter der Nachweis, dass ein Spiel mit ähnlichem Namen weiterhin gefunden wird. Guard grün.
+- retries: 0
+
+### [ ] 6.6 Bericht fortschreiben
+- depends: 6.1, 6.2, 6.3, 6.4, 6.5
+- Ziel: `loop/REPORT.md` bekommt einen Abschnitt über Phase 6: was der erste echte Durchlauf widerlegt hat, was jetzt gilt, und was weiterhin nur durch ein laufendes Spiel zu klären ist.
+- Dateien: `loop/REPORT.md`, `README-AMD.md` falls eine Aussage darin nicht mehr stimmt.
+- Akzeptanz: jede Aufgaben-ID aus Phase 6 kommt mit Endzustand vor. Guard grün. Danach `ScheduleWakeup(stop: true)`.
+- retries: 0
+
+---
+
 ## Mensch-Aufgaben (Loop überspringt, niemals anfassen)
 
 ### [h] H1 Spikes S1–S8 auf dem PC durchführen und in `loop/SPIKES.md` eintragen
