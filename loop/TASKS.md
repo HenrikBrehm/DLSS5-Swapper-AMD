@@ -285,7 +285,7 @@ Sie korrigiert, was dieser Lauf widerlegt hat.
 - Akzeptanz: ≥ 2 neue Tests, darunter der Nachweis, dass ein Spiel mit ähnlichem Namen weiterhin gefunden wird. Guard grün.
 - retries: 0
 
-### [~] 6.7 Anti-Cheat ohne Spur auf der Platte erkennen
+### [v] 6.7 Anti-Cheat ohne Spur auf der Platte erkennen — commit: 6870e0a
 - depends: 6.3
 - Befund: `reality-check` stuft Call of Duty als Stufe 1 ein und wuerde damit empfehlen, eine Proxy-DLL neben die Programmdatei zu legen. Ricochet arbeitet im Kern des Betriebssystems und hinterlaesst im Spielordner nichts, was `antiCheatPresent` finden koennte. Dieselbe Klasse betrifft Vanguard und andere. Fortnite dagegen wird korrekt erkannt, sobald der echte Programmpfad mitgegeben wird; dort ist nichts kaputt.
 - Ziel: Eine kurze, ausdrueckliche Liste von Titeln mit Anti-Cheat, das auf der Platte unsichtbar ist, nach dem Vorbild der bereits vorhandenen Ausnahme fuer Arc Raiders. Erkennung ueber den Ordnernamen. Zusaetzlich die Tiefensuche so weit erhoehen, dass die Unreal-Form `<Projekt>/Binaries/Win64/EasyAntiCheat` auch ohne Programmpfad gefunden wird, mit Beschneidung der grossen Inhaltsordner, damit das Pruefbudget nicht vorher aufgebraucht ist.
